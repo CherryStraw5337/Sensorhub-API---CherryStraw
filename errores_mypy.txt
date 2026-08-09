@@ -1,0 +1,35 @@
+Success: no issues found in 18 source files
+migrations/env.py: error: Duplicate module named "env" (also at "./alembic/env.py")
+migrations/env.py: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#mapping-file-paths-to-modules for more info
+migrations/env.py: note: Common resolutions include:
+migrations/env.py: note:     a) using `--exclude` to avoid checking one of them,
+migrations/env.py: note:     b) adding `__init__.py` somewhere,
+migrations/env.py: note:     c) using `--explicit-package-bases` or adjusting `MYPYPATH`
+Found 1 error in 1 file (errors prevented further checking)
+tests/test_services.py:34: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_services.py:45: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_services.py:45: note: Use "-> None" if function does not return a value
+tests/test_services.py:51: error: Argument 1 to "ReadingService" has incompatible type "FakeReadingRepository"; expected "ReadingRepository"  [arg-type]
+tests/test_services.py:51: error: Argument 2 to "ReadingService" has incompatible type "FakeSensorRepository"; expected "SensorRepository"  [arg-type]
+tests/test_services.py:59: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_services.py:59: note: Use "-> None" if function does not return a value
+tests/test_services.py:66: error: Argument 1 to "ReadingService" has incompatible type "FakeReadingRepository"; expected "ReadingRepository"  [arg-type]
+tests/test_services.py:66: error: Argument 2 to "ReadingService" has incompatible type "FakeSensorRepository"; expected "SensorRepository"  [arg-type]
+tests/test_api.py:19: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_api.py:53: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_api.py:53: note: Use "-> None" if function does not return a value
+tests/test_api.py:67: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_api.py:67: note: Use "-> None" if function does not return a value
+tests/test_api.py:73: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_api.py:73: note: Use "-> None" if function does not return a value
+tests/test_api.py:87: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_api.py:87: note: Use "-> None" if function does not return a value
+tests/test_api.py:100: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_api.py:100: note: Use "-> None" if function does not return a value
+tests/test_api.py:115: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_api.py:115: note: Use "-> None" if function does not return a value
+tests/test_api.py:127: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_api.py:127: note: Use "-> None" if function does not return a value
+tests/test_api.py:132: error: Function is missing a return type annotation  [no-untyped-def]
+tests/test_api.py:132: note: Use "-> None" if function does not return a value
+Found 16 errors in 2 files (checked 56 source files)

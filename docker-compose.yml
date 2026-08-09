@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: sensor_user
+      POSTGRES_PASSWORD: supersecretpassword
+      POSTGRES_DB: sensor_db
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      # IMPORTANTE: Nota que el host es "db" (el nombre del servicio de arriba), NO localhost.
+      - DATABASE_URL=postgresql://sensor_user:supersecretpassword@db:5432/sensor_db
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:

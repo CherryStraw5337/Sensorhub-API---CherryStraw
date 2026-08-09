@@ -1,0 +1,80 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-and-scan:
+    runs-on: ubuntu-latest
+
+    # [ALTO POTENCIAL] Levantamos un PostgreSQL efímero solo para los tests
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: sensor_user
+          POSTGRES_PASSWORD: supersecretpassword
+          POSTGRES_DB: sensor_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+    - name: Checkout del repositorio
+      uses: actions/checkout@v4
+
+    - name: Configurar Python 3.12
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+        cache: 'pip'
+
+    - name: Instalar dependencias
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        # Aseguramos herramientas de CI por si no están explícitas
+        pip install pytest pytest-cov ruff mypy httpx
+
+    - name: Linter (Ruff)
+      run: ruff check .
+
+    - name: Chequeo de Tipos Estáticos (Mypy)
+      run: mypy app/
+
+    - name: Migraciones y Pruebas (Smoke Test + Coverage >= 80%)
+      env:
+        # Apuntamos a la base de datos de pruebas que GitHub Actions levantó
+        DATABASE_URL: postgresql://sensor_user:supersecretpassword@localhost:5432/sensor_db
+      run: |
+        alembic upgrade head
+        pytest --cov=app --cov-report=xml --cov-fail-under=80
+
+    # [ALTO POTENCIAL] Escáner de seguridad de código y dependencias
+    - name: Escaneo de Vulnerabilidades (Trivy)
+      uses: aquasecurity/trivy-action@master
+      with:
+        scan-type: 'fs'
+        ignore-unfixed: true
+        format: 'table'
+        severity: 'CRITICAL,HIGH'
+
+    # [ALTO POTENCIAL] Emisión de Issue si algo falla en main
+    - name: Auto-crear Issue en caso de fallo
+      if: failure() && github.ref == 'refs/heads/main'
+      uses: actions/github-script@v7
+      with:
+        script: |
+          github.rest.issues.create({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            title: `Fallo crítico en CI Pipeline (Commit: ${context.sha.substring(0, 7)})`,
+            body: `El pipeline de integración continua ha fallado en la rama \`main\`.\n\nRevisa los logs completos de GitHub Actions aquí: https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}\n\n*Por favor, prioriza la resolución de este incidente.*`
+          })
