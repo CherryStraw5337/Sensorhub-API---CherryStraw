@@ -157,7 +157,8 @@ La IA propuso una implementación base para validar los límites físicos del ha
 - **Audité la cobertura de tests (`tests/test_services.py`):** Identifiqué una deuda técnica inicial del 55% de cobertura con 29 líneas descubiertas, anotándola en el backlog para su posterior resolución.
 
 ## Semana 5 · Entrada 2 (Martes)
-Prompt: "Crea una función pura llamada celsius_to_fahrenheit y otra fahrenheit_to_celsius. Ambas deben tener type hints estrictos en Python (float) y docstrings explicando qué hacen. Asegúrate de incluir validaciones para no permitir temperaturas por debajo del cero absoluto (-273.15 °C), levantando un ValueError si ocurre."
+Prompt: "Ayúdame con la instalación y configuración de Aider con mi API key de Gemini, así como instrucciones en caso de que falle para intentar de otras formas. En caso de seguir fallando, lo documentaré en el log."
+Aider Prompt: "Crea una función pura llamada celsius_to_fahrenheit y otra fahrenheit_to_celsius. Ambas deben tener type hints estrictos en Python (float) y docstrings explicando qué hacen. Asegúrate de incluir validaciones para no permitir temperaturas por debajo del cero absoluto (-273.15 °C), levantando un ValueError si ocurre."
 Durante la ejecución del ejercicio utilizando **Aider CLI** con proveedores de modelos de lenguaje externos, enfrenté incidencias técnicas de infraestructura que requirieron la aplicación de *timeboxing* y un plan de contingencia (Plan B):
 - **Diagnóstico del Error HTTP 429 (Rate Limit):** Los pre-checks internos de Aider saturaron el límite de peticiones por minuto (RPM) de la capa gratuita de Google AI Studio al intentar utilizar modelos de la familia Pro.
 - **Diagnóstico del Error HTTP 404 (Not Found):** Al intentar cambiar al modelo Flash (`gemini-1.5-flash`), la biblioteca subyacente `litellm` de Aider envió un identificador que la versión de la API `v1beta` no reconoció.
