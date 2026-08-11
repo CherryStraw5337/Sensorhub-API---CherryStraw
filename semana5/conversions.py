@@ -13,7 +13,7 @@ def celsius_to_fahrenheit(celsius: float) -> float:
     """
     if celsius < -273.15:
         raise ValueError("La temperatura no puede ser inferior al cero absoluto (-273.15 °C).")
-    return (celsius * 9/5) + 32
+    return round((celsius * 9 / 5) + 32, 2)
 
 
 def fahrenheit_to_celsius(fahrenheit: float) -> float:
