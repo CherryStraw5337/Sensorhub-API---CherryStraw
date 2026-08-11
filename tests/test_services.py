@@ -1,10 +1,21 @@
 from datetime import UTC, datetime
 
+import pytest
+from fastapi import HTTPException
+
 from app.models.reading import ReadingModel
 from app.models.sensor import SensorModel
 from app.repositories.sensor_repo import SensorRepository
+from app.schemas.reading import ReadingUpdate
 from app.schemas.sensor import SensorCreate, SensorUpdate
-from app.services.reading_service import ReadingService
+from app.services.reading_service import (
+    InvalidUnitError,
+    OutOfRangeError,
+    ReadingNotFoundError,
+    ReadingService,
+    SensorNotFoundError,
+)
+from app.services.sensor_service import SensorService
 
 
 # 1. El Simulador de Lecturas (Debe implementar TODO el Protocol)
@@ -114,3 +125,148 @@ def test_record_reading_success() -> None:
 
     assert reading.value == 25.0
     assert reading.sensor_id == 1
+
+def test_update_reading_bypasses_physical_validation_should_fail():
+    """
+    Prueba que intenta actualizar una lectura con valores físicamente
+    imposibles. Esperamos que el servicio lance una excepción, pero
+    actualmente fallará porque la validación no está implementada.
+    """
+    # 1. Preparación (Arrange)
+    fake_reading_repo = FakeReadingRepository()
+    fake_sensor_repo = FakeSensorRepository()
+    service = ReadingService(fake_reading_repo, fake_sensor_repo)
+    
+    # Asumimos que tu FakeSensorRepository tiene un sensor ID=1 configurado
+    # (por ejemplo, con unidad "C" y max_value=100.0)
+    # Y que el FakeReadingRepository ya tiene una lectura válida con ID=1 registrada.
+    # (Ajusta estos IDs o crea el registro previo si tu Fake inicia vacío):
+    service.record_reading(sensor_id=1, value=50.0, unit="C")
+    reading_id = 1 # Asumimos que la primera lectura obtiene ID 1
+    
+    # Preparamos un payload venenoso (Unidad incorrecta y valor fuera de rango)
+    malicious_payload = ReadingUpdate(value=9999.0, unit="F")
+    
+    # 2 & 3. Acción y Aserción (Act & Assert)
+    # Esperamos que lance CUALQUIER excepción (ya sea la actual HTTPException o nuestra futura excepción pura)
+    with pytest.raises(Exception):  # noqa: B017
+        service.update_reading(reading_id=reading_id, payload=malicious_payload)
+
+def test_record_reading_sensor_not_found():
+    """Valida que intentar registrar en un sensor inexistente lanza la excepción correcta."""
+    service = ReadingService(FakeReadingRepository(), FakeSensorRepository())
+    with pytest.raises(SensorNotFoundError):
+        service.record_reading(sensor_id=999, value=20.0, unit="C")
+
+def test_record_reading_invalid_unit():
+    """Valida que inyectar una unidad incorrecta es detectado por el validador físico."""
+    service = ReadingService(FakeReadingRepository(), FakeSensorRepository())
+    # Asumimos que el sensor ID=1 en el Fake espera "C"
+    with pytest.raises(InvalidUnitError):
+        service.record_reading(sensor_id=1, value=20.0, unit="F")
+
+def test_record_reading_out_of_range():
+    """Valida que los límites físicos del hardware se respetan."""
+    service = ReadingService(FakeReadingRepository(), FakeSensorRepository())
+    with pytest.raises(OutOfRangeError):
+        # Asumimos que el sensor ID=1 tiene max_value=100.0
+        service.record_reading(sensor_id=1, value=9999.0, unit="C")
+
+def test_get_readings_by_sensor_not_found():
+    """Valida la lectura paginada de un sensor fantasma."""
+    service = ReadingService(FakeReadingRepository(), FakeSensorRepository())
+    with pytest.raises(SensorNotFoundError):
+        service.get_readings_by_sensor(sensor_id=999, limit=10, offset=0)
+
+def test_get_reading_not_found():
+    """Valida la obtención de una lectura inexistente."""
+    service = ReadingService(FakeReadingRepository(), FakeSensorRepository())
+    with pytest.raises(ReadingNotFoundError):
+        service.get_reading(reading_id=999)
+
+def test_update_reading_not_found():
+    """Valida que actualizar un ID falso no corrompa el sistema."""
+    service = ReadingService(FakeReadingRepository(), FakeSensorRepository())
+    with pytest.raises(ReadingNotFoundError):
+        service.update_reading(reading_id=999, payload=ReadingUpdate(value=50.0, unit="C"))
+
+def test_delete_reading_not_found():
+    """Valida que la eliminación de un ID inexistente maneje el error."""
+    service = ReadingService(FakeReadingRepository(), FakeSensorRepository())
+    with pytest.raises(ReadingNotFoundError):
+        service.delete_reading(reading_id=999)
+
+def test_get_reading_success():
+    """Valida obtener una lectura existente exitosamente."""
+    fake_reading_repo = FakeReadingRepository()
+    fake_sensor_repo = FakeSensorRepository()
+    service = ReadingService(fake_reading_repo, fake_sensor_repo)
+    
+    # 1. Insertamos un dato válido
+    created = service.record_reading(sensor_id=1, value=25.0, unit="C")
+    
+    # 2. Lo recuperamos y validamos
+    fetched = service.get_reading(created.id)
+    assert fetched.id == created.id
+    assert fetched.value == 25.0
+
+def test_get_readings_by_sensor_success():
+    """Valida obtener lecturas paginadas de un sensor existente."""
+    fake_reading_repo = FakeReadingRepository()
+    fake_sensor_repo = FakeSensorRepository()
+    service = ReadingService(fake_reading_repo, fake_sensor_repo)
+    
+    # Insertamos dos lecturas
+    service.record_reading(sensor_id=1, value=20.0, unit="C")
+    service.record_reading(sensor_id=1, value=22.0, unit="C")
+    
+    # Solicitamos la lista
+    readings = service.get_readings_by_sensor(sensor_id=1, limit=10, offset=0)
+    assert len(readings) == 2
+
+def test_update_reading_success():
+    """Valida que una actualización correcta modifica los datos respetando la física."""
+    fake_reading_repo = FakeReadingRepository()
+    fake_sensor_repo = FakeSensorRepository()
+    service = ReadingService(fake_reading_repo, fake_sensor_repo)
+    
+    created = service.record_reading(sensor_id=1, value=10.0, unit="C")
+    
+    # Actualizamos a un valor válido distinto
+    payload = ReadingUpdate(value=15.0, unit="C")
+    updated = service.update_reading(reading_id=created.id, payload=payload)
+    
+    assert updated.value == 15.0
+
+def test_delete_reading_success():
+    """Valida que una lectura existente se elimina correctamente."""
+    fake_reading_repo = FakeReadingRepository()
+    fake_sensor_repo = FakeSensorRepository()
+    service = ReadingService(fake_reading_repo, fake_sensor_repo)
+    
+    created = service.record_reading(sensor_id=1, value=10.0, unit="C")
+    
+    # Eliminamos (el servicio retorna None si es exitoso)
+    assert service.delete_reading(created.id) is None
+    
+    # Verificamos que ya no existe intentando buscarlo
+    with pytest.raises(ReadingNotFoundError):
+        service.get_reading(created.id)
+
+def test_sensor_service_update_not_found() -> None:
+    """Verifica que lance HTTPException(404) al actualizar un sensor inexistente."""
+    fake_sensor_repo = FakeSensorRepository()
+    service = SensorService(fake_sensor_repo)
+    
+    with pytest.raises(HTTPException) as exc_info:
+        service.update_sensor(999, SensorUpdate(name="Test"))
+    assert exc_info.value.status_code == 404
+
+def test_sensor_service_delete_not_found() -> None:
+    """Verifica que lance HTTPException(404) al eliminar un sensor inexistente."""
+    fake_sensor_repo = FakeSensorRepository()
+    service = SensorService(fake_sensor_repo)
+    
+    with pytest.raises(HTTPException) as exc_info:
+        service.delete_sensor(999)
+    assert exc_info.value.status_code == 404
