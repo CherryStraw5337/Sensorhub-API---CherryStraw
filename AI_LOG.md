@@ -166,3 +166,10 @@ Durante la ejecución del ejercicio utilizando **Aider CLI** con proveedores de 
   ```bash
   git commit -m "feat(conversions): agregar funciones de temperatura (Fallback por falla 404/429 de Aider API)"
   ```
+
+## Semana 5 · Entrada 3 (Miércoles)
+Prompt: "Ayúdame a alcanzar la meta del 95% de cobertura de pruebas abordando las líneas 'untriggered' en mis capas de servicio y repositorio. Necesito aislar la base de datos para probar los casos límite, la inyección de excepciones transaccionales y la propagación correcta de errores (como `404 Not Found`)."
+La IA diagnosticó las áreas sin cobertura (principalmente bloques `try/except` y condicionales de validación) y propuso una batería de pruebas negativas utilizando simuladores (`MagicMock`) y el patrón de Inversión de Dependencias (DIP). Acepté la implementación tras verificar el impacto en la resiliencia del sistema:
+* **Acepté la inyección de fallos mediante Mocks:** Implementé `MagicMock` para forzar un `SQLAlchemyError` durante un commit() simulado en el repositorio de lecturas (`test_reading_repo_rollback_on_commit_error`). Validé rigurosamente que el sistema reacciona ejecutando un `rollback()`, lo cual es vital arquitectónicamente para evitar bloqueos o estados inconsistentes en la base de datos.
+* **Acepté el diseño de pruebas destructivas (Negative Testing):** Incorporé tests específicos para atacar las ramas de "No Encontrado" (`update_reading_not_found`, `delete_sensor_not_found`) y validaciones físicas extremas (bypasses, unidades inválidas). Verificamos que la capa de negocio propaga limpiamente las excepciones hacia la capa web (`FastAPI`) sin exponer las entrañas de la lógica.
+* **Auditoría final de métricas de calidad:** Al finalizar la refactorización y gracias al desacoplamiento de la infraestructura real, ejecuté la suite completa (80 tests atómicos). Validé el éxito superando la meta exigida del 95%, cerrando el ciclo con una cobertura total verificada del 96.93%.
