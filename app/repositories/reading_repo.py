@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Protocol
 
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from app.models.reading import ReadingModel
@@ -33,20 +34,27 @@ class ReadingRepository(Protocol):
 
     def delete(self, reading_id: int) -> bool: ...
 
-class SQLAlchemyReadingRepository:
-    """Implementación del repositorio de lecturas usando SQLAlchemy."""
-    def __init__(self, session: Session) -> None:
-        self.session = session
+class SQLAlchemyReadingRepository(ReadingRepository):
+    def __init__(self, session: Session):
+        self._session = session
 
     def add(self, sensor_id: int, value: float, unit: str) -> ReadingModel:
+        """Crea una nueva lectura con resiliencia de base de datos."""
         reading = ReadingModel(sensor_id=sensor_id, value=value, unit=unit)
-        self.session.add(reading)
-        self.session.commit()
-        self.session.refresh(reading)
-        return reading
+        
+        try:
+            self._session.add(reading)
+            self._session.commit()
+            self._session.refresh(reading)
+            return reading
+        except SQLAlchemyError:
+            # ¡LA EXCEPCIÓN FUE CAPTURADA! Hacemos rollback para proteger la integridad.
+            self._session.rollback() # <--- EL FIX DE PRODUCCIÓN
+            # Volvemos a lanzar la excepción para que el servicio la maneje.
+            raise
 
     def get_by_id(self, reading_id: int) -> ReadingModel | None:
-        return self.session.get(ReadingModel, reading_id)
+        return self._session.get(ReadingModel, reading_id)
 
     def list_for_sensor(
         self, 
@@ -65,7 +73,7 @@ class SQLAlchemyReadingRepository:
             
         stmt = stmt.offset(offset).limit(limit)
         # scalars().all() devuelve Sequence[ReadingModel], lo convertimos a list para mypy
-        results: Sequence[ReadingModel] = self.session.scalars(stmt).all()
+        results: Sequence[ReadingModel] = self._session.scalars(stmt).all()
         return list(results)
 
     def update(
@@ -82,14 +90,14 @@ class SQLAlchemyReadingRepository:
             reading.value = value
         if unit is not None:
             reading.unit = unit
-        self.session.commit()
-        self.session.refresh(reading)
+        self._session.commit()
+        self._session.refresh(reading)
         return reading
 
     def delete(self, reading_id: int) -> bool:
         reading = self.get_by_id(reading_id)
         if not reading:
             return False
-        self.session.delete(reading)
-        self.session.commit()
+        self._session.delete(reading)
+        self._session.commit()
         return True
