@@ -1,30 +1,21 @@
 from unittest.mock import MagicMock
 
 import pytest
-from fastapi import HTTPException
 from sqlalchemy.exc import SQLAlchemyError
 
-from app.models.reading import ReadingModel
-from app.models.sensor import SensorModel
-from app.repositories.reading_repo import ReadingRepository, SQLAlchemyReadingRepository
+from app.repositories.reading_repo import SQLAlchemyReadingRepository
 from app.repositories.sensor_repo import SensorRepository
-from app.schemas.reading import ReadingCreate
-from app.schemas.sensor import SensorCreate, SensorUpdate
+from app.schemas.sensor import SensorUpdate
 
 
-def test_reading_repo_rollback_on_commit_error():
+def test_reading_repo_rollback_on_commit_error() -> None:
     """Prueba que la implementación de lecturas hace rollback si falla la BD"""
     mock_session = MagicMock()
     mock_session.commit.side_effect = SQLAlchemyError("Error simulado de Base de Datos")
+    repo = SQLAlchemyReadingRepository(mock_session)
     
-    # 2. INSTANCIA LA IMPLEMENTACIÓN CONCRETA
-    repo = SQLAlchemyReadingRepository(mock_session) # <--- EL FIX
-    reading_data = ReadingCreate(sensor_id=1, value=25.0, unit="C")
-
-    with pytest.raises(SQLAlchemyError, match="Error simulado de Base de Datos"):
-        # Ajusta la llamada según los parámetros reales de tu repo.add
-        repo.add(reading_data, reading_data.value, reading_data.unit)
-
+    with pytest.raises(SQLAlchemyError):
+        repo.add(sensor_id=1, value=25.0, unit="C")
     mock_session.rollback.assert_called_once()
 
 # --- TESTS PARA CASOS "NOT FOUND" EN SENSOR REPO ---
@@ -35,9 +26,10 @@ def test_sensor_repo_update_not_found() -> None:
     mock_session.get.return_value = None  # Simulamos que no lo encuentra
     repo = SensorRepository(mock_session)
     
-    update_data = SensorCreate(name="Fail", type="T", unit="C", min_value=0, max_value=10)
-    # Suponiendo que tienes un modelo SensorUpdate, si no, usa el modelo adecuado
-    result = repo.update(999, update_data)
+    # FIX: Solo pasamos 'name' que es el parámetro permitido por el esquema
+    update_data = SensorUpdate(name="Sensor Inexistente")
+    
+    result = repo.update(999, update_data)  # ID que no existe
     assert result is None
 
 def test_sensor_repo_delete_not_found() -> None:
