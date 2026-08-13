@@ -2,9 +2,11 @@
 from datetime import datetime
 
 from app.models.reading import ReadingModel
+from app.models.sensor import SensorModel
 from app.repositories.reading_repo import ReadingRepository
 from app.repositories.sensor_repo import SensorRepository
 from app.schemas.reading import ReadingUpdate
+from app.services.alert_strategy import AlertStrategy
 
 
 # 1. Excepciones Puras de Dominio (Desacopladas de FastAPI)
@@ -20,11 +22,17 @@ class OutOfRangeError(Exception):
 class ReadingService:
     """Servicio agnóstico para manejar la lógica de negocio de lecturas"""
     
-    def __init__(self, reading_repo: ReadingRepository, sensor_repo: SensorRepository) -> None:
+    def __init__(
+        self, 
+        reading_repo: ReadingRepository, 
+        sensor_repo: SensorRepository,
+        alert_strategy: AlertStrategy | None = None  # <-- Inyección opcional (OCP)
+    ) -> None:
         self._reading_repo = reading_repo
         self._sensor_repo = sensor_repo
+        self._alert_strategy = alert_strategy        # <-- Guardar la estrategia
 
-    def _validate_physics(self, sensor, value: float, unit: str) -> None:
+    def _validate_physics(self, sensor: SensorModel, value: float, unit: str) -> None:
         """Validador centralizado de reglas físicas (DRY)"""
         if unit != sensor.unit:
             raise InvalidUnitError(f"Unidad incorrecta. Se esperaba {sensor.unit}")
@@ -37,7 +45,11 @@ class ReadingService:
             raise SensorNotFoundError("Sensor no encontrado")
 
         self._validate_physics(sensor, value, unit)
-        return self._reading_repo.add(sensor.id, value, unit)
+        reading = self._reading_repo.add(sensor.id, value, unit)
+        if self._alert_strategy and sensor.threshold is not None:
+            if value > sensor.threshold:
+                self._alert_strategy.trigger_alert(sensor.id, value, sensor.threshold)
+        return reading
 
     def get_readings_by_sensor(
         self, sensor_id: int, limit: int, offset: int, start_date: datetime | None = None, end_date: datetime | None = None
@@ -64,8 +76,11 @@ class ReadingService:
         if not sensor:
             raise SensorNotFoundError("Sensor asociado no encontrado")
 
-        # 3. ¡VALIDACIÓN EN UPDATE! (Observación A cubierta)
-        self._validate_physics(sensor, payload.value, payload.unit)
+        # Si el payload trae None (no se actualiza), usamos el valor actual en la BD.
+        val_to_check = payload.value if payload.value is not None else reading.value
+        unit_to_check = payload.unit if payload.unit is not None else reading.unit
+        
+        self._validate_physics(sensor, val_to_check, unit_to_check)
 
         updated = self._reading_repo.update(reading_id, value=payload.value, unit=payload.unit)
         if not updated:
