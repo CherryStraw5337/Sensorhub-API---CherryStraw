@@ -29,13 +29,13 @@ def health() -> dict[str, str]:
 
 @app.exception_handler(SensorNotFoundError)
 @app.exception_handler(ReadingNotFoundError)
-async def not_found_exception_handler(request: Request, exc: Exception):
+async def not_found_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=404, content={"detail": str(exc)})
 
 @app.exception_handler(InvalidUnitError)
-async def invalid_unit_exception_handler(request: Request, exc: Exception):
+async def invalid_unit_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=400, content={"detail": str(exc)})
 
 @app.exception_handler(OutOfRangeError)
-async def out_of_range_exception_handler(request: Request, exc: Exception):
+async def out_of_range_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     return JSONResponse(status_code=422, content={"detail": str(exc)})
