@@ -6,14 +6,15 @@
 # SensorHub API
 *De firmware y hardware a una arquitectura de software robusta, escalable y asistida por IA.*
 
-</div>
-
 [![CI Pipeline](https://github.com/lylaxtraw/sdlc-electronica-lyla_alice/actions/workflows/ci.yml/badge.svg)](https://github.com/lylaxtraw/sdlc-electronica-lyla_alice/actions/workflows/ci.yml)
 [![Security Scan](https://github.com/lylaxtraw/sdlc-electronica-lyla_alice/actions/workflows/security.yml/badge.svg)](https://github.com/lylaxtraw/sdlc-electronica-lyla_alice/actions/workflows/security.yml)
+<br>
 ![Coverage](https://img.shields.io/badge/Coverage-95%25-brightgreen.svg)
 ![Python](https://img.shields.io/badge/Python-3.12+-blue.svg)
+<br>
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.111+-009688.svg?logo=fastapi)
 ![Docker](https://img.shields.io/badge/Docker-Multi--stage-2496ED.svg?logo=docker)
+<br>
 [![DOCS](https://img.shields.io/badge/Render-DOCS-00889E?style=flat&logo=render&logoColor=white)](https://sensorhub-api.onrender.com/docs)
 [![HEALTH](https://img.shields.io/badge/Render-HEALTH-9E1500?style=flat&logo=render&logoColor=white)](https://sensorhub-api-odm7.onrender.com/health)
 
