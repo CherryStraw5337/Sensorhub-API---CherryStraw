@@ -183,7 +183,8 @@ La IA diagnosticó que los tests propuestos anteriormente estaban utilizando nom
 * **Acepté y validé el uso de MagicMock para OCP:** Aunque tuve que corregir los nombres, validé la estrategia de usar mocks para aislar la base de datos y comprobar que el `DBAlertStrategy` delega el trabajo correctamente al repositorio. Esto me permitió alcanzar el GREEN en los 85 tests y superar oficialmente la meta exigida del 95%.
 
 ## Semana 5 · Entrada 5 (Viernes)
-Prompt: "Audita mi bitácora AI_LOG.md para confirmar que cumplo los entregables de Alto Potencial para el viernes e indícame cómo proceder para el duelo del sábado."
+Prompt: "Audita mi bitácora AI_LOG.md para confirmar que cumplo los entregables de Alto Potencial para el viernes e indícame cómo proceder para el duelo del sábado, y reestructura el README.md para tener un look más profesional"
 La IA auditó la bitácora completa y la comparó contra la rúbrica de la Semana 5. Confirmó que la feature de anomalías (detección, patrón Strategy intercambiable para notificaciones, TDD estricto y alta cobertura) estaba completa y correctamente documentada. Acepté la transición de la fase de codificación a la de despliegue y peer review:
 * **Validé el cumplimiento de la Feature Integradora:** Confirmé que mis commits y la cobertura verificada del 96.85% respaldan la implementación del "paquete" de alertas exigido para el viernes.
 * **Acepté la estrategia de cierre de proyecto:** Dejé de perseguir el 100% de cobertura (métrica de vanidad) y decidí enfocar el timeboxing restante en los entregables de alto potencial no-técnicos: el README.md definitivo con badges de calidad y la preparación del `AI_LOG.md` para el duelo de Peer Review humano vs. IA del sábado.
+* **Sobreescribí el `README.md`:** Tras revisar y ajustar el archivo MarkDown entregado, reemplazé el `README.md` con una versión más limpia, profesional, y directa.
