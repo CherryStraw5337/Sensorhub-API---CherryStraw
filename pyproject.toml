@@ -2,6 +2,7 @@
 # Pytest solo debe contener los argumentos de configuración propios de pytest. Para cambiar la ruta, solo modifica --cov
 # con "--cov={carpeta/archivo que quieres testear}"
 addopts = "--cov=app --cov-report=term-missing --cov-fail-under=95"
+norecursedirs = ["deprecated", ".git", ".venv", "build", "dist", "__pycache__"]
 
 [tool.ruff]
 target-version = "py312"
