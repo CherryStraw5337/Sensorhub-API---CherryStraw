@@ -15,6 +15,7 @@ class SensorModel(Base):
     unit: Mapped[str]
     min_value: Mapped[float]
     max_value: Mapped[float]
+    threshold: Mapped[float | None] = mapped_column(default=None, nullable=True)  # Umbral opcional para alertas
     
     # Usar string para evitar que mypy pida la clase antes de existir
     

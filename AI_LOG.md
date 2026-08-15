@@ -143,7 +143,48 @@ Prompt: "Ayúdame a corregir el código de mis repositorios Fake. Al correr Mypy
 (Tras el primer ajuste) "Mypy ahora arroja: `Incompatible types in assignment (expression has type "FakeSensorRepository", variable has type "SensorRepository")`"
 La IA diagnosticó dos problemas fundamentales en mis simuladores de base de datos. Primero, discrepancias en las firmas de los métodos (uso de `Any` en lugar de esquemas Pydantic, y variables sueltas en lugar de `SensorUpdate`). Segundo, identificó que Mypy aplica **Subtipado Nominal** por defecto; por lo tanto, aunque los métodos coincidieran, Mypy bloqueaba la ejecución porque `FakeSensorRepository` no tenía un parentesco formal (herencia) con la clase `SensorRepository` que exigía el servicio.
 Ésta vez, las desiciones fueron tomadas tras ser pasadas por un repo de prubea:
-
 - **Alineación estricta de contratos:** Refactoricé los repositorios *Fake* para que utilicen exactamente los mismos modelos de Pydantic (`SensorCreate`, `SensorUpdate`) y nombren sus métodos idéntico a la capa de persistencia real (`get_all` en lugar de `list_all`).
 - **Herencia Estratégica para Mypy:** Hice que mis repositorios simulados heredaran formalmente de las clases originales (`class FakeSensorRepository(SensorRepository):`).
 - **Desacoplamiento en Unit Tests:** Sobrescribí el método `__init__` de los Fakes (evitando llamar a `super().__init__(session)`) para no requerir la conexión a la base de datos de SQLAlchemy durante las pruebas. Esto resolvió el chequeo estricto de tipos al 100%, manteniendo las pruebas rápidas, aisladas y respetando el Principio de Inversión de Dependencias (DIP).
+
+***
+
+## Semana 5 · Entrada 1 (Lunes)
+Prompt: "Escribe prompts efectivos para generar, refactorizar y explicar código relacionado con validaciones físicas, y discute con fundamento arquitectónico cuándo NO usar microservicios."
+La IA propuso una implementación base para validar los límites físicos del hardware y una guía teórica sobre la transición de monolitos a arquitecturas distribuidas. Acepté los conceptos pero realicé validaciones críticas en el código:
+- **Acepté la validación de límites físicos:** Verifiqué que la lógica matemática impida registrar lecturas fuera de rango o por debajo del cero absoluto (-273.15 °C), protegiendo la integridad de los datos simulando un circuito de protección físico.
+- **Acepté el análisis de MonolithFirst:** Concluí con criterio propio que adoptar microservicios de manera prematura introduce una complejidad operacional innecesaria (red, consistencia eventual, despliegues distribuidos); por lo tanto, mantener un monolito modular bien estructurado es la decisión correcta en etapas tempranas del producto.
+- **Audité la cobertura de tests (`tests/test_services.py`):** Identifiqué una deuda técnica inicial del 55% de cobertura con 29 líneas descubiertas, anotándola en el backlog para su posterior resolución.
+
+## Semana 5 · Entrada 2 (Martes)
+Prompt: "Ayúdame con la instalación y configuración de Aider con mi API key de Gemini, así como instrucciones en caso de que falle para intentar de otras formas. En caso de seguir fallando, lo documentaré en el log."
+Aider Prompt: "Crea una función pura llamada celsius_to_fahrenheit y otra fahrenheit_to_celsius. Ambas deben tener type hints estrictos en Python (float) y docstrings explicando qué hacen. Asegúrate de incluir validaciones para no permitir temperaturas por debajo del cero absoluto (-273.15 °C), levantando un ValueError si ocurre."
+Durante la ejecución del ejercicio utilizando **Aider CLI** con proveedores de modelos de lenguaje externos, enfrenté incidencias técnicas de infraestructura que requirieron la aplicación de *timeboxing* y un plan de contingencia (Plan B):
+- **Diagnóstico del Error HTTP 429 (Rate Limit):** Los pre-checks internos de Aider saturaron el límite de peticiones por minuto (RPM) de la capa gratuita de Google AI Studio al intentar utilizar modelos de la familia Pro.
+- **Diagnóstico del Error HTTP 404 (Not Found):** Al intentar cambiar al modelo Flash (`gemini-1.5-flash`), la biblioteca subyacente `litellm` de Aider envió un identificador que la versión de la API `v1beta` no reconoció.
+- **Estrategia de Contingencia (Plan B):** Para no bloquear el pipeline de desarrollo, apliqué *timeboxing* y generé las funciones de conversión de temperatura con validaciones estrictas de forma manual, respaldándolas con un commit atómico y transparente:
+  ```bash
+  git commit -m "feat(conversions): agregar funciones de temperatura (Fallback por falla 404/429 de Aider API)"
+  ```
+
+## Semana 5 · Entrada 3 (Miércoles)
+Prompt: "Ayúdame a alcanzar la meta del 95% de cobertura de pruebas abordando las líneas 'untriggered' en mis capas de servicio y repositorio. Necesito aislar la base de datos para probar los casos límite, la inyección de excepciones transaccionales y la propagación correcta de errores (como `404 Not Found`)."
+La IA diagnosticó las áreas sin cobertura (principalmente bloques `try/except` y condicionales de validación) y propuso una batería de pruebas negativas utilizando simuladores (`MagicMock`) y el patrón de Inversión de Dependencias (DIP). Acepté la implementación tras verificar el impacto en la resiliencia del sistema:
+* **Acepté la inyección de fallos mediante Mocks:** Implementé `MagicMock` para forzar un `SQLAlchemyError` durante un commit() simulado en el repositorio de lecturas (`test_reading_repo_rollback_on_commit_error`). Validé rigurosamente que el sistema reacciona ejecutando un `rollback()`, lo cual es vital arquitectónicamente para evitar bloqueos o estados inconsistentes en la base de datos.
+* **Acepté el diseño de pruebas destructivas (Negative Testing):** Incorporé tests específicos para atacar las ramas de "No Encontrado" (`update_reading_not_found`, `delete_sensor_not_found`) y validaciones físicas extremas (bypasses, unidades inválidas). Verificamos que la capa de negocio propaga limpiamente las excepciones hacia la capa web (`FastAPI`) sin exponer las entrañas de la lógica.
+* **Auditoría final de métricas de calidad:** Al finalizar la refactorización y gracias al desacoplamiento de la infraestructura real, ejecuté la suite completa (80 tests atómicos). Validé el éxito superando la meta exigida del 95%, cerrando el ciclo con una cobertura total verificada del 96.93%.
+* **Rechacé y corregí los nombres de variables propuestos:** Identifiqué que la IA intentaba auditar llamadas a métodos con parámetros inexistentes en mi esquema de Pydantic. Corregí manualmente los tests en `tests/test_alert_repo.py` para usar exactamente `description`. Razón de ingeniería: Los tests unitarios deben validar rigurosamente el contrato de la interfaz definido, no un pseudocódigo genérico generado por la IA.
+* **Acepté y validé el uso de MagicMock para OCP:** Aunque tuve que corregir los nombres, validé la estrategia de usar mocks para aislar la base de datos y comprobar que el `DBAlertStrategy` delega el trabajo correctamente al repositorio. Esto me permitió alcanzar el GREEN en los 85 tests y superar oficialmente la meta exigida del 95%.
+
+## Semana 5 · Entrada 4 (Jueves)
+Prompt: "Ayúdame a corregir los fallos de mismatch en los tests de alertas desarrollados ayer, ya que el pipeline de TDD está fallando debido a alucinaciones en los nombres de las variables, y necesitamos alcanzar la meta del 95% de cobertura."
+La IA diagnosticó que los tests propuestos anteriormente estaban utilizando nombres de parámetros incorrectos (como `message` en lugar de `description`) y sugirió los ajustes necesarios para alinear las aserciones de `MagicMock` con la implementación real de mi contrato de ingeniería en `app/repositories/alert_repo.py`. Intervine para depurar la ejecución y asegurar el GREEN definitivo:
+* **Rechacé y corregí los nombres de variables propuestos:** Identifiqué que la IA intentaba auditar llamadas a métodos con parámetros inexistentes en mi esquema de Pydantic. Corregí manualmente los tests en `tests/test_alert_repo.py` para usar exactamente `description`. Razón de ingeniería: Los tests unitarios deben validar rigurosamente el contrato de la interfaz definido, no un pseudocódigo genérico generado por la IA.
+* **Acepté y validé el uso de MagicMock para OCP:** Aunque tuve que corregir los nombres, validé la estrategia de usar mocks para aislar la base de datos y comprobar que el `DBAlertStrategy` delega el trabajo correctamente al repositorio. Esto me permitió alcanzar el GREEN en los 85 tests y superar oficialmente la meta exigida del 95%.
+
+## Semana 5 · Entrada 5 (Viernes)
+Prompt: "Audita mi bitácora AI_LOG.md para confirmar que cumplo los entregables de Alto Potencial para el viernes e indícame cómo proceder para el duelo del sábado, y reestructura el README.md para tener un look más profesional"
+La IA auditó la bitácora completa y la comparó contra la rúbrica de la Semana 5. Confirmó que la feature de anomalías (detección, patrón Strategy intercambiable para notificaciones, TDD estricto y alta cobertura) estaba completa y correctamente documentada. Acepté la transición de la fase de codificación a la de despliegue y peer review:
+* **Validé el cumplimiento de la Feature Integradora:** Confirmé que mis commits y la cobertura verificada del 96.85% respaldan la implementación del "paquete" de alertas exigido para el viernes.
+* **Acepté la estrategia de cierre de proyecto:** Dejé de perseguir el 100% de cobertura (métrica de vanidad) y decidí enfocar el timeboxing restante en los entregables de alto potencial no-técnicos: el README.md definitivo con badges de calidad y la preparación del `AI_LOG.md` para el duelo de Peer Review humano vs. IA del sábado.
+* **Sobreescribí el `README.md`:** Tras revisar y ajustar el archivo MarkDown entregado, reemplazé el `README.md` con una versión más limpia, profesional, y directa.
