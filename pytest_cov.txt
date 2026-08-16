@@ -1,0 +1,57 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0
+rootdir: /Users/salvaxtraw/Programming/Portfolio/Shared Projects/sdlc-electronica-lyla_alice
+configfile: pyproject.toml
+plugins: cov-7.1.0, anyio-4.14.2
+collected 47 items
+
+semana0/test_hola_sensor.py .                                            [  2%]
+semana1/jueves/test_solid_isp_dip.py ....                                [ 10%]
+semana1/martes/test_fsm.py ....                                          [ 19%]
+semana1/miercoles/test_solid_sol.py ......                               [ 31%]
+semana1/uart_driver/test/config_test.py ...                              [ 38%]
+semana1/uart_driver/test/device_test.py ...                              [ 44%]
+semana1/uart_driver/test/parsers_test.py ...                             [ 51%]
+semana1/uart_driver/test/recorder_test.py ...                            [ 57%]
+semana2/eval1/test_alerts.py ..                                          [ 61%]
+semana2/eval1/test_detector.py ...                                       [ 68%]
+semana2/eval1/test_registry.py ...                                       [ 74%]
+tests/test_api.py ..........                                             [ 95%]
+tests/test_services.py ..                                                [100%]
+
+=============================== warnings summary ===============================
+.venv/lib/python3.14/site-packages/fastapi/testclient.py:1
+  /Users/salvaxtraw/Programming/Portfolio/Shared Projects/sdlc-electronica-lyla_alice/.venv/lib/python3.14/site-packages/fastapi/testclient.py:1: StarletteDeprecationWarning: Using `httpx` with `starlette.testclient` is deprecated; install `httpx2` instead.
+    from starlette.testclient import TestClient as TestClient  # noqa
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+================================ tests coverage ================================
+_______________ coverage: platform darwin, python 3.14.6-final-0 _______________
+
+Name                               Stmts   Miss  Cover   Missing
+----------------------------------------------------------------
+app/__init__.py                        0      0   100%
+app/db.py                             12      4    67%   15-19
+app/main.py                           12      0   100%
+app/models/__init__.py                 3      0   100%
+app/models/reading.py                 10      0   100%
+app/models/sensor.py                   6      0   100%
+app/repositories/__init__.py           0      0   100%
+app/repositories/reading_repo.py      45     12    73%   62, 64, 78-87
+app/repositories/sensor_repo.py       36     11    69%   19-22, 38-45
+app/routers/__init__.py                0      0   100%
+app/routers/readings.py               34      1    97%   65
+app/routers/sensors.py                29      2    93%   31, 53
+app/schemas/__init__.py                3      0   100%
+app/schemas/reading.py                12      0   100%
+app/schemas/sensor.py                 15      0   100%
+app/services/__init__.py               0      0   100%
+app/services/reading_service.py       38      6    84%   24, 54, 68-71
+app/services/sensor_service.py        26      5    81%   17, 32-35
+tests/__init__.py                      0      0   100%
+tests/test_api.py                     70      0   100%
+tests/test_services.py                37      1    97%   31
+----------------------------------------------------------------
+TOTAL                                388     42    89%
+Required test coverage of 80% reached. Total coverage: 89.18%
+======================== 47 passed, 1 warning in 0.25s =========================
