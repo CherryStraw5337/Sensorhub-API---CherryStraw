@@ -3,7 +3,10 @@ from logging.config import fileConfig
 from sqlalchemy import engine_from_config, pool
 
 from alembic import context
+# Imports originales de tu app
 from app.db import Base, get_database_url
+
+from app.models import *  # Importa todos tus modelos para que Alembic los reconozca
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -16,16 +19,17 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# from myapp import mymodel
-# target_metadata = mymodel.Base.metadata
-target_metadata = Base.metadata  # Use the metadata from your Base class
+# Usamos el metadata de tu clase Base inyectada desde app.db
+target_metadata = Base.metadata  
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
 # my_important_option = config.get_main_option("my_important_option")
 # ... etc.
-config.set_main_option("sqlalchemy.url", get_database_url())
 
+# Seteamos la URL dinámicamente usando tu función get_database_url()
+# Esto asegura que lea de las variables de entorno correctas (local o prod).
+config.set_main_option("sqlalchemy.url", get_database_url())
 
 
 def run_migrations_offline() -> None:
