@@ -1,8 +1,7 @@
-version: '3.8'
-
 services:
   db:
-    image: postgres:15-alpine
+    # 1. Actualizado a PostgreSQL 16 (Requisito TC-01)
+    image: postgres:16-alpine
     environment:
       POSTGRES_USER: sensor_user
       POSTGRES_PASSWORD: supersecretpassword
@@ -11,16 +10,51 @@ services:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    # 2. Healthcheck: Evita que la API intente conectarse antes de que la BD esté lista
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sensor_user -d sensor_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   api:
     build: .
     ports:
       - "8000:8000"
     environment:
-      # IMPORTANTE: Nota que el host es "db" (el nombre del servicio de arriba), NO localhost.
-      - DATABASE_URL=postgresql://sensor_user:supersecretpassword@db:5432/sensor_db
+      # 3. IMPORTANTE: Usamos 'postgresql+psycopg://' porque en la Semana 4 configuramos psycopg 3
+      - DATABASE_URL=postgresql+psycopg://sensor_user:supersecretpassword@db:5432/sensor_db
     depends_on:
-      - db
+      db:
+        condition: service_healthy # Espera a que el healthcheck de la BD pase a verde
+
+  # ==========================================
+  # 🚀 TRACK A - INFRAESTRUCTURA IoT (US-09 y US-10)
+  # ==========================================
+  mqtt_broker:
+    image: eclipse-mosquitto:2.0
+    ports:
+      - "1883:1883" # Puerto estándar MQTT (TCP)
+      - "9001:9001" # WebSockets (opcional, excelente por si luego quieres un dashboard)
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - mosquitto_data:/mosquitto/data
+      - mosquitto_log:/mosquitto/log
+
+  mqtt_bridge:
+    build: .
+    # Este servicio usa tu misma imagen de Python, pero en lugar de arrancar FastAPI (uvicorn),
+    # ejecuta el script que escucha MQTT. Lo crearemos más adelante.
+    command: python -m app.mqtt_bridge
+    environment:
+      - MQTT_BROKER_HOST=mqtt_broker
+      - MQTT_PORT=1883
+      - API_URL=http://api:8000
+    depends_on:
+      - api
+      - mqtt_broker
 
 volumes:
   postgres_data:
+  mosquitto_data:
+  mosquitto_log:
