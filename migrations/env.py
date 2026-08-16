@@ -19,7 +19,7 @@ if config.config_file_name is not None:
 
 # add your model's MetaData object here
 # for 'autogenerate' support
-# Usamos el metadata de tu clase Base inyectada desde app.db
+# Usamos el metadata de la clase Base inyectada desde app.db
 target_metadata = Base.metadata  
 
 # other values from the config, defined by the needs of env.py,
@@ -29,7 +29,7 @@ target_metadata = Base.metadata
 
 # Seteamos la URL dinámicamente usando tu función get_database_url()
 # Esto asegura que lea de las variables de entorno correctas (local o prod).
-config.set_main_option("sqlalchemy.url", get_database_url())
+config.set_main_option("postgresql://sensor_db:mlbdH0PYZVuD3Yrvx246VXnNRoqYl1eU@dpg-d9ps4mtbedkc73ajlgv0-a.oregon-postgres.render.com/sensor_db_prod", get_database_url())
 
 
 def run_migrations_offline() -> None:
@@ -44,7 +44,7 @@ def run_migrations_offline() -> None:
     script output.
 
     """
-    url = config.get_main_option("sqlalchemy.url")
+    url = config.get_main_option("postgresql://sensor_db:mlbdH0PYZVuD3Yrvx246VXnNRoqYl1eU@dpg-d9ps4mtbedkc73ajlgv0-a.oregon-postgres.render.com/sensor_db_prod")
     context.configure(
         url=url,
         target_metadata=target_metadata,
