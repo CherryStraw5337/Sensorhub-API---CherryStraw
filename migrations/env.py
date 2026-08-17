@@ -1,12 +1,22 @@
+# migrations/env.py
+
+import sys
+import os
 from logging.config import fileConfig
 
-from sqlalchemy import engine_from_config, pool
+# MODIFICACIÓN TC-01: No usaremos engine_from_config 
+from sqlalchemy import pool # Mantenemos pool para NullPool
 
 from alembic import context
-# Imports originales de tu app
-from app.db import Base, get_database_url
 
-from app.models import *  # Importa todos tus modelos para que Alembic los reconozca
+# MODIFICACIÓN ROBUSTA DEL PATH PARA TC-01 (Se mantiene)
+# Obtener la ruta absoluta del directorio que contiene este archivo (env.py)
+# que es el directorio 'migrations'
+migrations_dir = os.path.dirname(os.path.abspath(__file__))
+# El directorio raíz del proyecto es el padre de 'migrations'
+project_root = os.path.dirname(migrations_dir)
+# Añadir el directorio raíz al sys.path
+sys.path.append(project_root)
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
@@ -17,34 +27,19 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# add your model's MetaData object here
-# for 'autogenerate' support
-# Usamos el metadata de la clase Base inyectada desde app.db
-target_metadata = Base.metadata  
+# MODIFICACIÓN DE IMPORTACIONES PARA TC-01 (Evitar Circularidad y Usar Engine Centralizado)
+# Importamos Base y los modelos individuales de forma explícita.
+# NUEVO: Importamos el engine centralizado de app/db.py
+from app.db import Base, engine # <-- Solución TC-01
+from app.models.sensor import SensorModel
 
-# other values from the config, defined by the needs of env.py,
-# can be acquired:
-# my_important_option = config.get_main_option("my_important_option")
-# ... etc.
-
-# Seteamos la URL dinámicamente usando tu función get_database_url()
-# Esto asegura que lea de las variables de entorno correctas (local o prod).
-config.set_main_option("postgresql://sensor_db:mlbdH0PYZVuD3Yrvx246VXnNRoqYl1eU@dpg-d9ps4mtbedkc73ajlgv0-a.oregon-postgres.render.com/sensor_db_prod", get_database_url())
-
+target_metadata = Base.metadata
 
 def run_migrations_offline() -> None:
-    """Run migrations in 'offline' mode.
-
-    This configures the context with just a URL
-    and not an Engine, though an Engine is acceptable
-    here as well.  By skipping the Engine creation
-    we don't even need a DBAPI to be available.
-
-    Calls to context.execute() here emit the given string to the
-    script output.
-
-    """
-    url = config.get_main_option("postgresql://sensor_db:mlbdH0PYZVuD3Yrvx246VXnNRoqYl1eU@dpg-d9ps4mtbedkc73ajlgv0-a.oregon-postgres.render.com/sensor_db_prod")
+    """Run migrations in 'offline' mode."""
+    # MODIFICACIÓN TC-01: Usar la URL del engine importado 
+    # Antes: url = config.get_main_option("sqlalchemy.url")
+    url = engine.url.render_as_string(hide_password=False)
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -57,16 +52,18 @@ def run_migrations_offline() -> None:
 
 
 def run_migrations_online() -> None:
-    """Run migrations in 'online' mode.
+    """Run migrations in 'online' mode."""
+    # MODIFICACIÓN TC-01: Usar el engine importado directamente 
+    # Antes: connectable = engine_from_config(...)
+    connectable = engine 
 
-    In this scenario we need to create an Engine
-    and associate a connection with the context.
-
-    """
-    connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
+    # AJUSTE PARA TC-01: NullPool es recomendado para migraciones online 
+    # Reconfiguramos el pool del engine importado para usar NullPool
+    # Esto evita conexiones persistentes que podrían bloquear migraciones.
+    connectable.pool = pool.NullPool(
+        creator=connectable.pool._creator,
+        recycle=connectable.pool._recycle,
+        echo=connectable.pool._echo
     )
 
     with connectable.connect() as connection:
@@ -76,7 +73,6 @@ def run_migrations_online() -> None:
 
         with context.begin_transaction():
             context.run_migrations()
-
 
 if context.is_offline_mode():
     run_migrations_offline()
