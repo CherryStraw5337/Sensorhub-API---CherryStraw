@@ -1,6 +1,4 @@
 # app/repositories/sensor_repo.py
-from collections.abc import Sequence
-
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -15,11 +13,9 @@ class SensorRepository:
         self.session = session
 
     def get_all(self, limit: int = 100, offset: int = 0) -> list[SensorModel]:
-        """Obtiene una lista de sensores con paginación"""
-        query = select(SensorModel).offset(offset).limit(limit)
-        # scalars().all() devuelve Sequence[SensorModel], lo convertimos a list para mypy [2]
-        results: Sequence[SensorModel] = self.session.execute(query).scalars().all()
-        return list(results)
+        # Filtramos donde is_active == True
+        stmt = select(SensorModel).where(SensorModel.is_active).limit(limit).offset(offset)
+        return list(self.session.scalars(stmt).all())
 
     def get_by_id(self, sensor_id: int) -> SensorModel | None:
         """Busca un sensor por su ID único"""
@@ -48,7 +44,7 @@ class SensorRepository:
         """Elimina un sensor de la base de datos"""
         db_sensor = self.get_by_id(sensor_id)
         if db_sensor:
-            self.session.delete(db_sensor)
+            db_sensor.is_active = False
             self.session.commit()
             return True
         return False
