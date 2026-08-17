@@ -1,3 +1,4 @@
+# app/schemas/sensor.py
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -23,4 +24,5 @@ class SensorUpdate(BaseModel):
 class SensorOut(SensorBase):
     """Esquema para la salida de un sensor"""
     id: int
+    is_active: bool
     model_config = ConfigDict(from_attributes=True) 
