@@ -12,7 +12,7 @@ class ReadingModel(Base):
     __tablename__ = "readings"
     
     id: Mapped[int] = mapped_column(primary_key=True)
-    sensor_id: Mapped[int] = mapped_column(ForeignKey("sensor.id"))
+    sensor_id: Mapped[int] = mapped_column(ForeignKey("sensors.id", ondelete="CASCADE"))
     value: Mapped[float]
     unit: Mapped[str]
     created_at: Mapped[datetime] = mapped_column(default=datetime.now)
