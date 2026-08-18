@@ -13,7 +13,7 @@ class AlertModel(Base):
     __tablename__ = "alerts"
     
     id: Mapped[int] = mapped_column(primary_key=True)
-    sensor_id: Mapped[int] = mapped_column(ForeignKey("sensor.id")) # ¡El ForeignKey es vital aquí!
+    sensor_id: Mapped[int] = mapped_column(ForeignKey("sensors.id", ondelete="CASCADE")) # ¡El ForeignKey es vital aquí!
     reading_value: Mapped[float]
     threshold: Mapped[float]
     
