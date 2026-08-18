@@ -15,7 +15,7 @@ def test_reading_repo_rollback_on_commit_error() -> None:
     repo = SQLAlchemyReadingRepository(mock_session)
     
     with pytest.raises(SQLAlchemyError):
-        repo.add(sensor_id=1, value=25.0, unit="C")
+        repo.add(id=1, value=25.0, unit="C")
     mock_session.rollback.assert_called_once()
 
 # --- TESTS PARA CASOS "NOT FOUND" EN SENSOR REPO ---
@@ -70,7 +70,7 @@ def test_reading_repo_add_integrity_error() -> None:
     repo = SQLAlchemyReadingRepository(mock_session)
     
     with pytest.raises(SQLAlchemyError):
-        repo.add(sensor_id=999, value=10.0, unit="C")
+        repo.add(id=999, value=10.0, unit="C")
     # Verifica que intentó hacer el rollback
     mock_session.rollback.assert_called_once()
 

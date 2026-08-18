@@ -62,17 +62,17 @@ def test_desactivacion_segura_sensor_soft_delete() -> None:
     res_sensor = client.post("/sensors/", json={
         "name": "Sensor a Desactivar", "type": "T", "unit": "C", "min_value": 0, "max_value": 100
     })
-    sensor_id = res_sensor.json()["id"]
+    id = res_sensor.json()["id"]
     # Verificamos que arranca activo (asumiendo que tu esquema base lo tiene)
     assert res_sensor.json()["is_active"] is True 
 
     # 2. WHEN: el administrador envía una petición DELETE a /sensors/{id}
     # Según la US-01, esperamos un 204 No Content
-    response = client.delete(f"/sensors/{sensor_id}")
+    response = client.delete(f"/sensors/{id}")
     assert response.status_code == 204
 
     # 3. THEN: Verificamos que el registro SIGUE EXISTIENDO pero está INACTIVO
-    response_get = client.get(f"/sensors/{sensor_id}")
+    response_get = client.get(f"/sensors/{id}")
     assert response_get.status_code == 200 # No debe dar 404
     sensor_data = response_get.json()
     assert sensor_data["is_active"] is False # Aquí es donde debería fallar si no hay soft delete
@@ -94,8 +94,8 @@ def test_consulta_omitiendo_sensores_inactivos() -> None:
     res_to_delete = client.post("/sensors/", json={
         "name": "Sensor Inactivo", "type": "T", "unit": "C", "min_value": 0, "max_value": 100
     })
-    sensor_id_inactivo = res_to_delete.json()["id"]
-    client.delete(f"/sensors/{sensor_id_inactivo}") # Esperamos 204
+    id_inactivo = res_to_delete.json()["id"]
+    client.delete(f"/sensors/{id_inactivo}") # Esperamos 204
 
     # 2. WHEN: el usuario hace un GET a /sensors/
     response = client.get("/sensors/")
@@ -199,15 +199,15 @@ def test_extra_crud_operations() -> None:
     res_sensor = client.post("/sensors/", json={
         "name": "Sensor de Prueba", "type": "T", "unit": "C", "min_value": 0, "max_value": 100
     })
-    sensor_id = res_sensor.json()["id"]
+    id = res_sensor.json()["id"]
 
-    res_reading = client.post(f"/sensors/{sensor_id}/readings", json={
+    res_reading = client.post(f"/sensors/{id}/readings", json={
         "value": 20.0, "unit": "C"
     })
     reading_id = res_reading.json()["id"]
 
     # 2. Probar GET por ID (Casos de Éxito)
-    assert client.get(f"/sensors/{sensor_id}").status_code == 200
+    assert client.get(f"/sensors/{id}").status_code == 200
     assert client.get(f"/readings/{reading_id}").status_code == 200
 
     # 3. Probar GET por ID (Casos 404 - No Encontrado)
@@ -217,11 +217,11 @@ def test_extra_crud_operations() -> None:
     # 4. Probar DELETE (Caso de Éxito)
     # Nota: Usamos IN [200, 204] por si configuraste el delete con status 200 o 204
     assert client.delete(f"/readings/{reading_id}").status_code in [200, 204]
-    assert client.delete(f"/sensors/{sensor_id}").status_code in [200, 204]
+    assert client.delete(f"/sensors/{id}").status_code in [200, 204]
 
     # 5. Probar DELETE de nuevo (Debería dar 404 porque ya se borraron)
     assert client.delete(f"/readings/{reading_id}").status_code == 404
-    assert client.delete(f"/sensors/{sensor_id}").status_code == 404
+    assert client.delete(f"/sensors/{id}").status_code == 404
 """
 def test_humidity_sensor_lifecycle() -> None:
     """Test de integración para verificar las reglas físicas de un sensor de humedad."""
@@ -234,10 +234,10 @@ def test_humidity_sensor_lifecycle() -> None:
         "max_value": 100.0
     })
     assert res_sensor.status_code == 201, f"Fallo al crear sensor: {res_sensor.text}"
-    sensor_id = res_sensor.json()["id"]
+    id = res_sensor.json()["id"]
 
     # 2. POST: Registrar lectura válida (ej. 45.5%)
-    res_reading = client.post(f"/sensors/{sensor_id}/readings", json={
+    res_reading = client.post(f"/sensors/{id}/readings", json={
         "value": 45.5,
         "unit": "%"
     })
@@ -245,7 +245,7 @@ def test_humidity_sensor_lifecycle() -> None:
 
     # 3. POST: Intentar registrar lectura fuera de rango físico (ej. 150%)
     # Un sensor de humedad relativa no puede medir más del 100%
-    res_invalid_range = client.post(f"/sensors/{sensor_id}/readings", json={
+    res_invalid_range = client.post(f"/sensors/{id}/readings", json={
         "value": 150.0,
         "unit": "%"
     })
@@ -253,7 +253,7 @@ def test_humidity_sensor_lifecycle() -> None:
     assert res_invalid_range.status_code in [400, 422], "El sistema debió rechazar una humedad > 100%"
 
     # 4. POST: Intentar enviar una unidad incorrecta (ej. enviar 'C' en lugar de '%')
-    res_invalid_unit = client.post(f"/sensors/{sensor_id}/readings", json={
+    res_invalid_unit = client.post(f"/sensors/{id}/readings", json={
         "value": 50.0,
         "unit": "C"
     })

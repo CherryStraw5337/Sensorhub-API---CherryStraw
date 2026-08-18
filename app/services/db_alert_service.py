@@ -8,9 +8,9 @@ class DatabaseAlertStrategy:
     def __init__(self, alert_repo: AlertRepository) -> None:
         self.alert_repo = alert_repo
 
-    def trigger_alert(self, sensor_id: int, reading_value: float, threshold: float, message: str = "Alerta de anomalía detectada") -> None:
+    def trigger_alert(self, id: int, reading_value: float, threshold: float, message: str = "Alerta de anomalía detectada") -> None:
         self.alert_repo.add(
-            sensor_id=sensor_id,
+            id=id,
             reading_value=reading_value,
             threshold=threshold,
             message=message
