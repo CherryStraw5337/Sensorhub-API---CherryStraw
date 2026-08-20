@@ -48,3 +48,11 @@ def test_database_alert_strategy_send_alert() -> None:
     
     # Assert (debería llamar al método add del repositorio)
     mock_repo.add.assert_called_once_with(sensor_id=1, reading_value=75.0, threshold=70.0, message="Alerta de anomalía detectada")
+
+def test_alert_repo_update_status_not_found() -> None:
+    mock_session = MagicMock(spec=Session)
+    mock_session.get.return_value = None
+
+    result = AlertRepository(mock_session).update_status(999, "resolved")
+
+    assert result is None
