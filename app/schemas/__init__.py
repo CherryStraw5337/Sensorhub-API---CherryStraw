@@ -1,3 +1,4 @@
+from .alert import AlertOut
 from .reading import ReadingCreate, ReadingOut, ReadingUpdate
 from .sensor import SensorCreate, SensorOut, SensorUpdate
 
@@ -7,5 +8,6 @@ __all__ = [
     "ReadingOut", 
     "SensorCreate", 
     "SensorUpdate", 
-    "SensorOut"
+    "SensorOut",
+    "AlertOut"
     ]

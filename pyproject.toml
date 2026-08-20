@@ -1,7 +1,8 @@
 [tool.pytest.ini_options]
 # Pytest solo debe contener los argumentos de configuración propios de pytest. Para cambiar la ruta, solo modifica --cov
 # con "--cov={carpeta/archivo que quieres testear}"
-addopts = "--cov=app --cov-report=term-missing --cov-fail-under=80"
+addopts = "--cov=app --cov-report=term-missing --cov-fail-under=95"
+norecursedirs = ["deprecated", ".git", ".venv", "build", "dist", "__pycache__"]
 
 [tool.ruff]
 target-version = "py312"
@@ -15,7 +16,7 @@ exclude = [
 [tool.ruff.lint]
 # E: Errores de estilo, F: Errores lógicos, I: Orden de imports, UP: Sintaxis moderna, B: Bugs comunes (flake8-bugbear)
 select = ["E", "F", "I", "UP", "B"]
-ignore = ["E501"]
+ignore = ["E501", "E203", "B017", "UP015", "B001", "F541"]  # Ignora errores de longitud de línea, espacios en expresiones y aserciones de excepciones ciegas
 
 [tool.mypy]
 python_version = "3.12"

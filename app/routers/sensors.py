@@ -1,6 +1,8 @@
+# app/routers/sensors.py
+
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -8,54 +10,55 @@ from app.repositories.sensor_repo import SensorRepository
 from app.schemas.sensor import SensorCreate, SensorOut, SensorUpdate
 from app.services.sensor_service import SensorService
 
-"""Router para manejar las operaciones relacionadas con sensores"""
 router = APIRouter(prefix="/sensors", tags=["Sensors"])
 
 get_db_dependency = Depends(get_db)
 
 def get_sensor_service(db: Session = get_db_dependency) -> SensorService:
-    """Dependencia para obtener una instancia de SensorService"""
     repo = SensorRepository(db)
     return SensorService(repo)
 
 get_sensor_service_dependency = Depends(get_sensor_service)
 
-"""Endpoints para manejar las operaciones CRUD de sensores"""
-
 @router.get("/", response_model=list[SensorOut])
 def list_sensors(
     limit: int = Query(100, ge=1),
     offset: int = Query(0, ge=0),
-    service: SensorService = get_sensor_service_dependency
+    id: int | None = Query(None,description="Buscar por id específico"),
+    region: str | None = Query(None, description="Filtrar por región del sensor"),
+    name: str | None = Query(None, description="Filtrar por coincidencia en el nombre"),
+    last_error: str | None = Query(None, description="Filtrar por último error registrado"),
+    db: Session = get_db_dependency
 ) -> list[SensorOut]:
-    # El servicio devuelve List[SensorModel], FastAPI lo convertirá a List[SensorOut]
-    return service.get_sensors(limit, offset) # type: ignore
+    """Lista todos los sensores activos con opciones de búsqueda avanzada."""
+    repo = SensorRepository(db)
+    sensors = repo.get_all(id=id, limit=limit, offset=offset, region=region, name=name, last_error=last_error)
+    return sensors  # type: ignore
 
-@router.get("/{sensor_id}", response_model=SensorOut)
-def get_sensor(
-    sensor_id: int, 
-    service: SensorService = get_sensor_service_dependency
-) -> SensorOut:
-    return service.get_sensor(sensor_id) # type: ignore
+@router.post("/", response_model=SensorOut, status_code=status.HTTP_201_CREATED)
+def create_sensor(payload: SensorCreate, service: Annotated[SensorService, Depends(get_sensor_service)]) -> SensorOut:
+    """Crea un nuevo sensor"""
+    return service.create_sensor(payload)  # type: ignore
 
-@router.post("/", response_model=SensorOut, status_code=201)
-def create_sensor(
-    payload: SensorCreate, 
-    service: Annotated[SensorService, Depends(get_sensor_service)] # Usar Annotated
-) -> SensorOut:
-    return service.create_sensor(payload) # type: ignore
-
-@router.patch("/{sensor_id}", response_model=SensorOut)
+@router.patch("/", response_model=SensorOut)
 def update_sensor(
-    sensor_id: int, 
-    payload: SensorUpdate, 
-    service: SensorService = get_sensor_service_dependency
+    payload: SensorUpdate,
+    id: int | None = Query(None, description="Actualizar por id específico"),
+    region: str | None = Query(None, description="Actualizar por región del sensor"),
+    name: str | None = Query(None, description="Actualizar por coincidencia en el nombre"),
+    last_error: str | None = Query(None, description="Actualizar por último error registrado"),
+    service: SensorService = get_sensor_service_dependency,
 ) -> SensorOut:
-    return service.update_sensor(sensor_id, payload) # type: ignore
+    """Actualiza los datos de un sensor"""
+    return service.update_sensor(id=id, region=region, name=name, last_error=last_error, payload=payload)  # type: ignore
 
-@router.delete("/{sensor_id}", status_code=204)
+@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
 def delete_sensor(
-    sensor_id: int, 
+    id: int | None = Query(None,description="Eliminar por id específico"),
+    region: str | None = Query(None, description="Eliminar por región del sensor"),
+    name: str | None = Query(None, description="Eliminar por coincidencia en el nombre"),
+    last_error: str | None = Query(None, description="Eliminar por último error registrado"),
     service: SensorService = get_sensor_service_dependency
-) -> None:
-    return service.delete_sensor(sensor_id)
+    ) -> None:
+    """Elimina un sensor de la database"""
+    service.delete_sensor(id=id, region=region, name=name, last_error=last_error)
