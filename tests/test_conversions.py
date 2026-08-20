@@ -1,4 +1,4 @@
-"""Pruebas unitarias para las funciones de conversión de sensores."""
+#tests/test_conversions.py
 
 import pytest
 
