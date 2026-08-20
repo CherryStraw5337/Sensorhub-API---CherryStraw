@@ -1,7 +1,8 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
-from sqlalchemy import text
+from sqlalchemy import func, select, text
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
 from app.db import Base, ensure_sqlite_schema, engine
 from app.routers import alerts, readings, sensors
@@ -11,6 +12,9 @@ from app.services.errors_service import (
     ReadingNotFoundError,
     SensorNotFoundError,
 )
+from app.models.alert import AlertModel
+from app.models.reading import ReadingModel
+from app.models.sensor import SensorModel
 
 """Fabricación de la base de datos (semana 4 usaremos Alembic)"""
 ensure_sqlite_schema()
@@ -36,6 +40,22 @@ def health() -> dict[str, str]:
         return {"status": "degraded", "service": "SensorHub", "database": "error"}
 
     return {"status": "ok", "service": "SensorHub", "database": "ok"}
+
+
+@app.get("/metrics", tags=["System"])
+def metrics() -> dict[str, int]:
+    with Session(engine) as session:
+        return {
+            "active_sensors": session.scalar(
+                select(func.count()).select_from(SensorModel).where(SensorModel.is_active.is_(True))
+            ) or 0,
+            "readings_total": session.scalar(
+                select(func.count()).select_from(ReadingModel)
+            ) or 0,
+            "open_alerts": session.scalar(
+                select(func.count()).select_from(AlertModel).where(AlertModel.status == "open")
+            ) or 0,
+        }
 
 @app.exception_handler(SensorNotFoundError)
 @app.exception_handler(ReadingNotFoundError)
