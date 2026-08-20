@@ -1,3 +1,10 @@
+# AI_LOG - Bitácora de uso de IA
+## IA usada: Gemini Plus 2.5 & Gemini Notebook
+### NOTA:
+Los logs de IA junto al python script (`logger.py`) fueron creados a base de recompilaciones de los chats existentes en la carpeta creada para este curso, por lo que pueden haber inconsistencias en la redacción y contenido. Esto no afecta a la operación de la API ya que los códigos se han documentado por commits extras. En caso de tener dudas, favor de generar un Issue con la plantilla "Pregunta"
+
+---
+
 # Semana 6 - Proyecto Final: SensorHub & Estabilización de API (Consolidado)
 
 ##### Prompts dados: 84
