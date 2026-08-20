@@ -223,3 +223,9 @@ __marimo__/
 #DS
 .DS_Store
 .aider*
+
+#Bash cmds
+.sh
+
+#Deprecated files
+deprecated/
