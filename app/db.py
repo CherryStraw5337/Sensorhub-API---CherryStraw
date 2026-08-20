@@ -60,6 +60,32 @@ def ensure_sqlite_schema() -> None:
                     f"ALTER TABLE sensors ADD COLUMN {nombre} {tipo}"
                 )
 
+        alertas = connection.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='alerts'"
+        ).fetchone()
+        if alertas is not None:
+            columnas_alertas = {
+                fila[1]
+                for fila in connection.exec_driver_sql("PRAGMA table_info('alerts')").fetchall()
+            }
+            if "status" not in columnas_alertas:
+                connection.exec_driver_sql(
+                    "ALTER TABLE alerts ADD COLUMN status VARCHAR DEFAULT 'open' NOT NULL"
+                )
+
+        lecturas = connection.exec_driver_sql(
+            "SELECT name FROM sqlite_master WHERE type='table' AND name='readings'"
+        ).fetchone()
+        if lecturas is not None:
+            columnas_lecturas = {
+                fila[1]
+                for fila in connection.exec_driver_sql("PRAGMA table_info('readings')").fetchall()
+            }
+            if "is_anomalous" not in columnas_lecturas:
+                connection.exec_driver_sql(
+                    "ALTER TABLE readings ADD COLUMN is_anomalous BOOLEAN DEFAULT 0 NOT NULL"
+                )
+
 
 # 3. Generador de sesión inyectable
 def get_db() -> Generator[Session, None, None]:
