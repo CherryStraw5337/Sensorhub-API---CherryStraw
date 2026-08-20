@@ -1,15 +1,18 @@
 # app/routers/readings.py
 from datetime import datetime
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.repositories.alert_repo import AlertRepository
 from app.repositories.reading_repo import SQLAlchemyReadingRepository
 from app.repositories.sensor_repo import SensorRepository
-from app.schemas.reading import ReadingCreate, ReadingOut, ReadingUpdate
+from app.models.alert import AlertModel
+from app.schemas.reading import ReadingCreate, ReadingOut, ReadingStats, ReadingUpdate
 from app.services.db_alert_strategy import DatabaseAlertStrategy
 from app.services.errors_service import OutOfRangeError
 from app.services.reading_service import ReadingService
@@ -17,12 +20,11 @@ from app.services.reading_service import ReadingService
 """Router para manejar las operaciones relacionadas con lecturas."""
 router = APIRouter(tags=["Lecturas"])
 
-get_db_dependency = Depends(get_db)
 get_from = Query(None, alias="from")
 get_to = Query(None, alias="to")
 
 
-def get_reading_service(db: Session = get_db_dependency) -> ReadingService:
+def get_reading_service(db: Annotated[Session, Depends(get_db)]) -> ReadingService:
     """
     Dependencia para instanciar ReadingService con sus repositorios
     y la estrategia de alertas conectada a la Base de Datos.
@@ -45,7 +47,8 @@ get_reading_service_dependency = Depends(get_reading_service)
 
 
 class LecturaLegacy(BaseModel):
-    id: int
+    id: int | None = None
+    sensor_id: int | None = None
     value: float
     unit: str | None = None
 
@@ -53,16 +56,40 @@ class LecturaLegacy(BaseModel):
 @router.post("/readings/", response_model=ReadingOut, status_code=201)
 def crear_lectura_legacy(
     payload: LecturaLegacy,
-    service: ReadingService = get_reading_service_dependency,
+    db: Annotated[Session, Depends(get_db)],
 ) -> ReadingOut:
     """Mantiene la ruta antigua de ingesta para clientes existentes."""
-    sensor = service._sensor_repo.get_by_id(payload.id)
+    service = ReadingService(
+        reading_repo=SQLAlchemyReadingRepository(db),
+        sensor_repo=SensorRepository(db),
+        alert_strategy=DatabaseAlertStrategy(AlertRepository(db)),
+    )
+    sensor_id = payload.sensor_id or payload.id
+    if sensor_id is None:
+        raise HTTPException(status_code=422, detail="Se requiere id o sensor_id")
+    sensor = service._sensor_repo.get_by_id(sensor_id)
     if sensor is None:
         raise HTTPException(status_code=404, detail="Sensor no encontrado")
     unidad = payload.unit or sensor.unit
     try:
-        lectura = service.record_reading(payload.id, payload.value, unidad)
+        lectura = service.record_reading(sensor_id, payload.value, unidad)
     except OutOfRangeError as exc:
+        alert_exists = db.scalar(
+            select(AlertModel).where(
+                AlertModel.sensor_id == sensor_id,
+                AlertModel.reading_value == payload.value,
+                AlertModel.status == "open",
+            )
+        )
+        if alert_exists is None:
+            threshold = sensor.threshold
+            if threshold is None:
+                threshold = sensor.max_value if payload.value > sensor.max_value else sensor.min_value
+            AlertRepository(db).add(
+                sensor_id=sensor_id,
+                reading_value=payload.value,
+                threshold=threshold,
+            )
         raise HTTPException(
             status_code=400,
             detail=f"Valor fuera de los límites físicos: {exc}",
@@ -81,6 +108,17 @@ def list_sensor_readings(
 ) -> list[ReadingOut]:
     """Lista lecturas de un sensor con paginación y filtros de fecha"""
     return service.get_readings_by_sensor(sensor_id, limit, offset, from_date, to_date)  # type: ignore
+
+
+@router.get("/sensors/{sensor_id}/stats", response_model=ReadingStats)
+def sensor_reading_stats(
+    sensor_id: int,
+    from_date: datetime | None = get_from,
+    to_date: datetime | None = get_to,
+    service: ReadingService = get_reading_service_dependency,
+) -> ReadingStats:
+    """Calcula mínimo, máximo y promedio en un periodo opcional."""
+    return service.get_stats_by_sensor(sensor_id, from_date, to_date)  # type: ignore
 
 
 @router.post("/sensors/{sensor_id}/readings", response_model=ReadingOut, status_code=201)
