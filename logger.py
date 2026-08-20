@@ -7,7 +7,7 @@ def procesar_chat(ruta_archivo, titulo_semana):
     Lee el archivo de bitácora. Si ya está formateado en Markdown,
     lo concatena directamente. Si es un chat crudo, extrae e interactúa.
     """
-    with open(ruta_archivo, 'r', encoding='utf-8') as file:
+    with open(ruta_archivo, encoding='utf-8') as file:
         contenido = file.read()
 
     # Si el archivo NO contiene los marcadores de chat crudo "User :" ni "Gemini :"
