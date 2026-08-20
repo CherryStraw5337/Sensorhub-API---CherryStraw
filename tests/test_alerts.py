@@ -68,15 +68,15 @@ def test_alert_state_machine_transition() -> None:
     alerts_res = test_client.get("/alerts/")
     alerts = alerts_res.json()
     assert len(alerts) > 0, "El sistema debió generar al menos una alerta"
-    
+
     alert_id = alerts[0]["id"]
-    
+
     # Validamos que el estado inicial sea "open"
     assert alerts[0].get("status") == "open", "La alerta debe iniciar en estado 'open'"
 
     # 3. WHEN: El operador reconoce la alerta (ACKNOWLEDGED)
     patch_res = test_client.patch(f"/alerts/{alert_id}", json={"status": "acknowledged"})
-    
+
     # 4. THEN: El sistema debe aceptar el cambio
     assert patch_res.status_code == 200, "El endpoint PATCH /alerts/{id} debe existir y aceptar la petición"
     assert patch_res.json()["status"] == "acknowledged", "El estado de la alerta no se actualizó"
