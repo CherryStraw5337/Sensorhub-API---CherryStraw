@@ -1,9 +1,10 @@
 # app/services/reading_service.py
 from datetime import datetime
+from typing import cast
 
 from app.models.reading import ReadingModel
 from app.models.sensor import SensorModel
-from app.repositories.reading_repo import ReadingRepository
+from app.repositories.reading_repo import ReadingRepository, ReadingStatsRepository
 from app.repositories.sensor_repo import SensorRepository
 from app.schemas.reading import ReadingUpdate
 from app.services.alert_strategy import AlertStrategy
@@ -39,7 +40,15 @@ class ReadingService:
         if not sensor or not sensor.is_active:
             raise SensorNotFoundError("Sensor no encontrado")
 
-        self._validate_physics(sensor, value, unit)
+        try:
+            self._validate_physics(sensor, value, unit)
+        except OutOfRangeError:
+            if self._alert_strategy:
+                boundary = sensor.threshold
+                if boundary is None:
+                    boundary = sensor.max_value if value > sensor.max_value else sensor.min_value
+                self._alert_strategy.trigger_alert(sensor.id, value, boundary)
+            raise
         reading = self._reading_repo.add(sensor.id, value, unit)
         if self._alert_strategy and sensor.threshold is not None:
             if value > sensor.threshold:
@@ -53,6 +62,18 @@ class ReadingService:
         if not sensor or not sensor.is_active:
             raise SensorNotFoundError("Sensor no encontrado")
         return self._reading_repo.list_for_sensor(sensor_id, limit, offset, start_date, end_date)
+
+    def get_stats_by_sensor(
+        self,
+        sensor_id: int,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> dict[str, float | None]:
+        sensor = self._sensor_repo.get_by_id(sensor_id)
+        if not sensor or not sensor.is_active:
+            raise SensorNotFoundError("Sensor no encontrado")
+        stats_repo = cast(ReadingStatsRepository, self._reading_repo)
+        return stats_repo.stats_for_sensor(sensor_id, start_date, end_date)
 
     def get_reading(self, reading_id: int) -> ReadingModel:
         reading = self._reading_repo.get_by_id(reading_id)
