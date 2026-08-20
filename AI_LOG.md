@@ -1,13 +1,540 @@
-# Bitácora de Inteligencia Artificial (AI_LOG.md)
-**Herramienta utilizada:** Gemini 2.5 Pro
+# AI_LOG - Bitácora de uso de IA
+**IA usada:** Gemini Plus 2.5 + Gemini Notebook
+**NOTA:**
+> Algunso logs pueden estar faltos de información debido al uso de Gemini Notebook para importar los chats y escribir los logs, así como el `logger.py`pudo haber eliminado alguna linea
+> En caso de duda de legitimidad de éste, favor de contactar directamente via GitHub Issues (especificamente Pregunta)
 
-## Semana 1 · Entrada 1 (Lunes)
+# Semana 1 - Del firmware al software: reencuadra lo que ya sabes
+
+### Prompts dados: 23
+
+### Chats creados: 1
+
+### Lunes · Entrada 1 (Python idiomático para ingenieros de C)
+
+**Prompt:** 
+> Ahora vamos con la semana 1, que empieza desde hoy, acá te paso la guía, la cual seguiremos paso a paso: Del firmware al software: reencuadra lo que ya sabes. OBJETIVOS: mapear conceptos de hardware/firmware a sus equivalentes de software · escribir Python idiomático (type hints, dataclasses, enums, protocolos — no "C con otra sintaxis") · aplicar los 5 principios SOLID con ejemplos del dominio de sensores · practicar el flujo profesional de Git con commits atómicos · arrancar tu bitácora de IA (AI_LOG.md) con entradas específicas. REGLAS DE LA SEMANA: los mensajes de commit son documentación (formato tipo: descripción — feat, fix, test, refactor, docs; "update" o "cambios" no dicen nada) · la IA es un par de manos veloces, no un oráculo: si no puedes explicar el código línea por línea, bórralo, escríbelo tú y registra el episodio en la bitácora.
+
+**Respuesta:**
+```text
+¡Excelente trabajo completando el Checkpoint de la Semana 0!
+
+
+
+Establecemos el Pacto de Trabajo: la IA propone estructuras y código limpio, pero tú debes auditar y entender cada línea. Si algo no lo puedes defender, lo borramos y lo reescribimos.
+
+
+
+Para hoy, Lunes (Python Idiomático para ingenieros de C), abordaremos:
+
+1. Modelado de Dominio (De struct y #define a Enum y Dataclass): En Python moderno, representamos una lectura (Reading) usando @dataclass(frozen=True). Al hacerla inmutable, evitamos efectos secundarios de punteros de C en memoria.
+
+2. Abstracción con Protocol (Tipado Estructural): Definiremos un contrato de interfaz Sensor usando typing.Protocol.
+
+3. 5 Funciones Puras: Funciones deterministas en sensor_utils.py que procesen datos generando copias (replace) sin modificar la entrada.
+
+
+
+Crea el archivo semana1/modelos_sensor.py para codificar la lectura básica con sus enums correspondientes:
+
+
+
+```python
+
+# semana1/modelos_sensor.py
+
+from dataclasses import dataclass
+
+from enum import Enum, auto
+
+from typing import Optional
+
+
+
+class SensorState(Enum):
+
+OK = auto()
+
+ERROR = auto()
+
+
+
+@dataclass(frozen=True)
+
+class Reading:
+
+sensor_id: str
+
+value: float
+
+unit: str
+
+state: SensorState = SensorState.OK
+
+error_message: Optional[str] = None
+
+Guarda estos cambios en semana1/modelos_sensor.py y corre ruff y mypy para verificar que todo esté en orden.
+
+
+
+
+
+---
+
+
+
+**Prompt:**
+
+> **Aunque ruff funcionó, mypy no: (.venv) salvaxtraw@MacBook-Air-de-Salvador semana1 % mypy modelos_sensor.py Success: no issues found in 1 source file (.venv) salvaxtraw@MacBook-Air-de-Salvador semana1 % ruff check modelos_sensor.py All checks passed! (.venv) salvaxtraw@MacBook-Air-de-Salvador semana1 %**
+
+
+
+**Respuesta:**
+
+```text
+
+¡Excelente reflejo al mover los archivos fuera de la carpeta venv/! El entorno virtual es el espacio de dependencias externas; nuestro código fuente jamás debe ir ahí dentro [1].
+
+
+
+Pasemos al Paso 2: El Protocolo y el Sensor Simulado.
+
+Implementaremos la clase Sensor usando typing.Protocol. Mypy aplicará tipado estructural (Duck Typing): si una clase implementa el método read() -> Reading y get_id() -> str, se considera compatible sin necesidad de herencia clásica [2].
+
+
+
+Añade este bloque al final de tu archivo semana1/modelos_sensor.py:
+
+
+
+```python
+
+import time
+
+import random
+
+from typing import Protocol
+
+
+
+class Sensor(Protocol):
+
+def read(self) -> Reading: ...
+
+def get_id(self) -> str: ...
+
+
+
+class DummyTempSensor:
+
+def __init__(self, sensor_id: str) -> None:
+
+self.sensor_id = sensor_id
+
+
+
+def read(self) -> Reading:
+
+# Simulamos una lectura aleatoria de temperatura
+
+val = round(random.uniform(15.0, 30.0), 2)
+
+return Reading(sensor_id=self.sensor_id, value=val, unit="C")
+
+
+
+def get_id(self) -> str:
+
+return self.sensor_id
+
+Guarda estos cambios en semana1/modelos_sensor.py y corre ruff y mypy.
+
+
+
+
+
+---
+
+
+
+**Prompt:**
+
+> **Ambos dieron verde, así que prosigamos**
+
+
+
+**Respuesta:**
+
+```text
+
+¡Brillante! Pasemos al Paso 3: Las 5 Funciones Puras para procesamiento de sensores [4].
+
+Para evitar la mutación de estado global (típica en C embebido por buffers), diseñaremos funciones puras en un archivo nuevo semana1/sensor_utils.py. Utilizaremos dataclasses.replace() para generar copias inmutables seguras ante hilos concurrentes [4, 5].
+
+
+
+Crea el archivo semana1/sensor_utils.py y pega exactamente el siguiente código:
+
+
+
+```python
+
+# semana1/sensor_utils.py
+
+from dataclasses import replace
+
+from typing import Sequence
+
+from semana1.modelos_sensor import Reading, SensorState
+
+
+
+def celsius_to_fahrenheit(reading: Reading) -> Reading:
+
+"""Función pura que convierte la lectura de Celsius a Fahrenheit."""
+
+if reading.unit != "C":
+
+return reading
+
+new_value = round((reading.value * 9/5) + 32, 2)
+
+return replace(reading, value=new_value, unit="F")
+
+
+
+def celsius_to_kelvin(reading: Reading) -> Reading:
+
+"""Función pura que convierte la lectura de Celsius a Kelvin."""
+
+if reading.unit != "C":
+
+return reading
+
+new_value = round(reading.value + 273.15, 2)
+
+return replace(reading, value=new_value, unit="K")
+
+
+
+def aplicar_calibracion_offset(reading: Reading, offset: float) -> Reading:
+
+"""Aplica un offset de calibración generando un nuevo objeto inmutable."""
+
+new_value = round(reading.value + offset, 2)
+
+return replace(reading, value=new_value)
+
+
+
+def promediar_lecturas(readings: Sequence[Reading]) -> float:
+
+"""Calcula el promedio de una secuencia de lecturas."""
+
+if not readings:
+
+return 0.0
+
+total = sum(r.value for r in readings)
+
+return round(total / len(readings), 2)
+
+
+
+def filtrar_anomalas(readings: Sequence[Reading], min_val: float, max_val: float) -> list[Reading]:
+
+"""Filtra lecturas marcando como ERROR aquellas fuera de los límites."""
+
+resultado = []
+
+for r in readings:
+
+if not (min_val <= r.value <= max_val):
+
+resultado.append(replace(r, state=SensorState.ERROR, error_message="Fuera de rango físico"))
+
+else:
+
+resultado.append(r)
+
+return resultado
+
+Crea el archivo y corre los linter desde la raíz.
+
+
+
+
+
+---
+
+
+
+**Prompt:**
+
+> **Aunque ruff funcionó, mypy no: (.venv) salvaxtraw@MacBook-Air-de-Salvador semana1 % ruff check All checks passed! (.venv) salvaxtraw@MacBook-Air-de-Salvador semana1 % mypy mypy: error: Cannot read file 'semana1': No such file or directory**
+
+
+
+**Respuesta:**
+
+```text
+
+Estás ejecutando el comando desde dentro de la carpeta semana1/, por lo que mypy busca una subcarpeta con ese mismo nombre que no existe [7].
+
+
+
+Regla de oro de Python: siempre ejecuta las herramientas de auditoría (mypy, pytest, ruff, git) desde el directorio raíz del repositorio (sdlc-electronica-lyla_alice/). De lo contrario, se rompe la resolución de importaciones absolutas como: from semana1.modelos_sensor import Reading [7].
+
+
+
+Regresa a la raíz con:
+
+cd ..
+
+
+
+Y corre:
+
+mypy semana1/
+```
+
+**Prompt:** 
+> Listo, ambos dieron verde
+
+**Respuesta:**
+```text
+¡Espectacular! Con los linters y el verificador en verde, cerramos el Lunes [8].
+
+
+
+El siguiente paso es realizar tus commits atómicos utilizando prefijos descriptivos [9]:
+
+git add semana1/modelos_sensor.py semana1/sensor_utils.py
+
+git commit -m "feat: agregar modelos de sensores inmutables y utilerías de funciones puras"
+
+
+
+Abre tu bitácora AI_LOG.md para registrar tu experiencia. Mañana Martes pasamos de la programación estructurada a la FSM Orientada a Objetos en Python [9, 10].
+
+
+
+
+
+Martes · Entrada 2 (La FSM orientada a objetos)
+```
+
+### Martes · Entrada 2 (La FSM orientada a objetos)
+
+**Prompt:** 
+> Bien, pasemos al día 2
+
+**Respuesta:**
+```text
+El corazón del firmware robusto embebido es la Máquina de Estados Finitos (FSM). En C, típicamente se implementa con variables globales y un switch-case gigante en el superloop, lo cual genera alto acoplamiento y transiciones ilegales invisibles [10].
+
+
+
+En Python y Orientación a Objetos, encapsulamos el estado y sus transiciones válidas dentro de una clase, controlando los errores mediante excepciones personalizadas [10].
+
+
+
+Crearemos una FSM para un Nodo de Sensor IoT en semana1/fsm_demo.py con estados IDLE, SAMPLING, TRANSMITTING y ERROR, y definiremos sus transiciones válidas.
+```
+
+**Prompt:** 
+> Mis disculpas, pero tal parece que yo he cometido un error. La guía nos otorga estas instrucciones (igualmente, creo que cometí el mismo error en el día 1): Día 2 · Martes — La FSM que ya conoces, ahora orientada a objetos (3–4 h) Reimplementa una máquina de estados finita — patrón que dominas del mundo embebido — para experimentar la diferencia entre el estilo procedural de C y el estilo OO. Crea semana1/fsm_demo.py: PYTHON from enum import Enum, auto class TrafficLightState(Enum): RED = auto(); YELLOW = auto(); GREEN = auto() class TrafficLightFSM: """El estado vive dentro del objeto, no en una variable global.""" def init(self) -> None: self._state = TrafficLightState.RED self._cycle_count = 0 Escribe 4 tests en semana1/test_fsm.py: estado inicial, transición RED→GREEN, ciclo completo que vuelve a RED, y conteo de ciclos. Ejecuta pytest semana1/ -v — los 4 deben pasar. Los mensajes de commit son documentación Usa el formato tipo: descripción — feat (funcionalidad), fix (corrección), test, refactor, docs. “fix”, “update” o “cambios” no dicen nada, y el coordinador lee tu historial.
+
+**Respuesta:**
+```text
+¡Excelente ojo de ingeniero para detectar la desviación y corregir el rumbo con la guía en mano! Adherirse estrictamente a las especificaciones es vital [11].
+
+
+
+Reestructuraremos fsm_demo.py para modelar el Semáforo de la Bodega (TrafficLightFSM) usando un mapeo O(1) de transiciones válidas en un diccionario [11].
+
+
+
+Crea el archivo semana1/fsm_demo.py con este código limpio:
+
+
+
+```python
+
+# semana1/fsm_demo.py
+
+from enum import Enum, auto
+
+
+
+class TrafficLightState(Enum):
+
+RED = auto()
+
+YELLOW = auto()
+
+GREEN = auto()
+
+
+
+class TrafficLightFSM:
+
+"""El estado vive dentro del objeto, no en una variable global."""
+
+def __init__(self) -> None:
+
+self._state = TrafficLightState.RED
+
+self._cycle_count = 0
+
+
+
+@property
+
+def state(self) -> TrafficLightState:
+
+return self._state
+
+
+
+@property
+
+def cycle_count(self) -> int:
+
+return self._cycle_count
+
+
+
+def transition(self) -> None:
+
+# RED -> GREEN -> YELLOW -> RED (completa un ciclo)
+
+if self._state == TrafficLightState.RED:
+
+self._state = TrafficLightState.GREEN
+
+elif self._state == TrafficLightState.GREEN:
+
+self._state = TrafficLightState.YELLOW
+
+elif self._state == TrafficLightState.YELLOW:
+
+self._state = TrafficLightState.RED
+
+self._cycle_count += 1
+
+Ahora crearemos el archivo semana1/test_fsm.py para escribir los 4 escenarios de prueba requeridos:
+
+
+
+# semana1/test_fsm.py
+
+from semana1.fsm_demo import TrafficLightFSM, TrafficLightState
+
+
+
+def test_estado_inicial():
+
+fsm = TrafficLightFSM()
+
+assert fsm.state == TrafficLightState.RED
+
+assert fsm.cycle_count == 0
+
+
+
+def test_transicion_red_a_green():
+
+fsm = TrafficLightFSM()
+
+fsm.transition()
+
+assert fsm.state == TrafficLightState.GREEN
+
+
+
+def test_ciclo_completo_vuelve_a_red():
+
+fsm = TrafficLightFSM()
+
+fsm.transition() # GREEN
+
+fsm.transition() # YELLOW
+
+fsm.transition() # RED
+
+assert fsm.state == TrafficLightState.RED
+
+assert fsm.cycle_count == 1
+
+
+
+def test_conteo_de_ciclos():
+
+fsm = TrafficLightFSM()
+
+for _ in range(6): # Ejecuta 2 ciclos completos
+
+fsm.transition()
+
+assert fsm.cycle_count == 2
+
+Ejecuta pytest desde el directorio raíz de tu proyecto para validar las pruebas unitarias: pytest semana1/ -v
+
+
+
+
+
+---
+
+
+
+**Prompt:**
+
+> **las entradas de la bitácora deberían verse así: #### Semana 1 · Entrada 2 Prompt: "Genera tests pytest para la clase ModbusParser (frames validos e invalidos)" La IA propuso 6 tests. Acepte 4. Rechace 2: * test_parse_empty_frame duplicaba test_rejects_short_frame -> redundante. * test_crc_validation probaba una validacion de CRC que mi parser NO implementa (la IA alucino la feature). Lo converti en un test de que el CRC se extrae sin validar. La verdad aquí fue donde yo fallé**
+
+
+
+**Respuesta:**
+
+```text
+
+¡No es un fallo, al contrario! Ese es exactamente el rol de auditoría crítica del programador humano. La IA propone y alucina, pero el ingeniero valida y filtra [12].
+
+
+
+Alineemos la bitácora AI_LOG.md con este formato estricto y analítico para documentar los aciertos y rechazos de la IA del Lunes y el Martes. Sellarlo con un commit de documentación [13].
+
+
+
+Guarda en tu raíz el archivo AI_LOG.md con estas entradas estructuradas:
+
+
+
+```markdown
+
+### Bitácora de Inteligencia Artificial (AI_LOG.md)
+
+
+
+**Herramienta utilizada:** Gemini / Copilot
+
+
+
+#### Semana 1 · Entrada 1 (Lunes)
+
 Prompt: "Mapea una lectura de sensor de C a Python moderno usando dataclasses inmutables, enums, tipado estructural (Protocol) y 5 funciones puras de procesamiento"
-La IA propuso la estructura `Reading` con `@dataclass(frozen=True)`, el protocolo `Sensor` y las 5 funciones en `sensor_utils.py`. Acepté el código pero ajusté el flujo de validación:
-- Acepté el modelado de datos y la sintaxis de reemplazo inmutable (`dataclasses.replace`), ya que elimina efectos secundarios comunes en punteros de C.
-- Rechacé la forma inicial de ejecutar `mypy` desde dentro de la subcarpeta `semana1/` porque lanzaba errores de resolución de módulos. Lo corregí ejecutando las herramientas de auditoría siempre desde el directorio raíz del proyecto.
 
-## Semana 1 · Entrada 2 (Martes)
+La IA propuso la estructura Reading con `@dataclass(frozen=True)`, el protocolo `Sensor` y las 5 funciones en `sensor_utils.py` [14]. Acepté el código pero ajusté el flujo de validación:
+
+* Acepté el modelado de datos y la sintaxis de reemplazo inmutable (`dataclasses.replace`), ya que elimina efectos secundarios comunes en punteros de C [14].
+
+* Rechacé la forma inicial de ejecutar mypy desde dentro de la subcarpeta `semana1/` porque lanzaba errores de resolución de módulos. Lo corregí ejecutando las herramientas de auditoría siempre desde el directorio raíz del proyecto [14].
+
+
+
+#### Semana 1 · Entrada 2 (Martes)
+
 Prompt: "Reimplementa una máquina de estados finita (FSM) orientada a objetos para experimentar el estilo OO frente al C procedural, con 4 tests unitarios"
 La IA propuso inicialmente una FSM para un nodo IoT de sensores con manejo de excepciones complejas. Rechacé la primera propuesta y acepté la corrección:
 - Rechacé el modelo de FSM IoT porque se desviaba de la especificación estricta de la guía, la cual pedía un semáforo (`TrafficLightFSM`).
@@ -143,48 +670,7 @@ Prompt: "Ayúdame a corregir el código de mis repositorios Fake. Al correr Mypy
 (Tras el primer ajuste) "Mypy ahora arroja: `Incompatible types in assignment (expression has type "FakeSensorRepository", variable has type "SensorRepository")`"
 La IA diagnosticó dos problemas fundamentales en mis simuladores de base de datos. Primero, discrepancias en las firmas de los métodos (uso de `Any` en lugar de esquemas Pydantic, y variables sueltas en lugar de `SensorUpdate`). Segundo, identificó que Mypy aplica **Subtipado Nominal** por defecto; por lo tanto, aunque los métodos coincidieran, Mypy bloqueaba la ejecución porque `FakeSensorRepository` no tenía un parentesco formal (herencia) con la clase `SensorRepository` que exigía el servicio.
 Ésta vez, las desiciones fueron tomadas tras ser pasadas por un repo de prubea:
+
 - **Alineación estricta de contratos:** Refactoricé los repositorios *Fake* para que utilicen exactamente los mismos modelos de Pydantic (`SensorCreate`, `SensorUpdate`) y nombren sus métodos idéntico a la capa de persistencia real (`get_all` en lugar de `list_all`).
 - **Herencia Estratégica para Mypy:** Hice que mis repositorios simulados heredaran formalmente de las clases originales (`class FakeSensorRepository(SensorRepository):`).
 - **Desacoplamiento en Unit Tests:** Sobrescribí el método `__init__` de los Fakes (evitando llamar a `super().__init__(session)`) para no requerir la conexión a la base de datos de SQLAlchemy durante las pruebas. Esto resolvió el chequeo estricto de tipos al 100%, manteniendo las pruebas rápidas, aisladas y respetando el Principio de Inversión de Dependencias (DIP).
-
-***
-
-## Semana 5 · Entrada 1 (Lunes)
-Prompt: "Escribe prompts efectivos para generar, refactorizar y explicar código relacionado con validaciones físicas, y discute con fundamento arquitectónico cuándo NO usar microservicios."
-La IA propuso una implementación base para validar los límites físicos del hardware y una guía teórica sobre la transición de monolitos a arquitecturas distribuidas. Acepté los conceptos pero realicé validaciones críticas en el código:
-- **Acepté la validación de límites físicos:** Verifiqué que la lógica matemática impida registrar lecturas fuera de rango o por debajo del cero absoluto (-273.15 °C), protegiendo la integridad de los datos simulando un circuito de protección físico.
-- **Acepté el análisis de MonolithFirst:** Concluí con criterio propio que adoptar microservicios de manera prematura introduce una complejidad operacional innecesaria (red, consistencia eventual, despliegues distribuidos); por lo tanto, mantener un monolito modular bien estructurado es la decisión correcta en etapas tempranas del producto.
-- **Audité la cobertura de tests (`tests/test_services.py`):** Identifiqué una deuda técnica inicial del 55% de cobertura con 29 líneas descubiertas, anotándola en el backlog para su posterior resolución.
-
-## Semana 5 · Entrada 2 (Martes)
-Prompt: "Ayúdame con la instalación y configuración de Aider con mi API key de Gemini, así como instrucciones en caso de que falle para intentar de otras formas. En caso de seguir fallando, lo documentaré en el log."
-Aider Prompt: "Crea una función pura llamada celsius_to_fahrenheit y otra fahrenheit_to_celsius. Ambas deben tener type hints estrictos en Python (float) y docstrings explicando qué hacen. Asegúrate de incluir validaciones para no permitir temperaturas por debajo del cero absoluto (-273.15 °C), levantando un ValueError si ocurre."
-Durante la ejecución del ejercicio utilizando **Aider CLI** con proveedores de modelos de lenguaje externos, enfrenté incidencias técnicas de infraestructura que requirieron la aplicación de *timeboxing* y un plan de contingencia (Plan B):
-- **Diagnóstico del Error HTTP 429 (Rate Limit):** Los pre-checks internos de Aider saturaron el límite de peticiones por minuto (RPM) de la capa gratuita de Google AI Studio al intentar utilizar modelos de la familia Pro.
-- **Diagnóstico del Error HTTP 404 (Not Found):** Al intentar cambiar al modelo Flash (`gemini-1.5-flash`), la biblioteca subyacente `litellm` de Aider envió un identificador que la versión de la API `v1beta` no reconoció.
-- **Estrategia de Contingencia (Plan B):** Para no bloquear el pipeline de desarrollo, apliqué *timeboxing* y generé las funciones de conversión de temperatura con validaciones estrictas de forma manual, respaldándolas con un commit atómico y transparente:
-  ```bash
-  git commit -m "feat(conversions): agregar funciones de temperatura (Fallback por falla 404/429 de Aider API)"
-  ```
-
-## Semana 5 · Entrada 3 (Miércoles)
-Prompt: "Ayúdame a alcanzar la meta del 95% de cobertura de pruebas abordando las líneas 'untriggered' en mis capas de servicio y repositorio. Necesito aislar la base de datos para probar los casos límite, la inyección de excepciones transaccionales y la propagación correcta de errores (como `404 Not Found`)."
-La IA diagnosticó las áreas sin cobertura (principalmente bloques `try/except` y condicionales de validación) y propuso una batería de pruebas negativas utilizando simuladores (`MagicMock`) y el patrón de Inversión de Dependencias (DIP). Acepté la implementación tras verificar el impacto en la resiliencia del sistema:
-* **Acepté la inyección de fallos mediante Mocks:** Implementé `MagicMock` para forzar un `SQLAlchemyError` durante un commit() simulado en el repositorio de lecturas (`test_reading_repo_rollback_on_commit_error`). Validé rigurosamente que el sistema reacciona ejecutando un `rollback()`, lo cual es vital arquitectónicamente para evitar bloqueos o estados inconsistentes en la base de datos.
-* **Acepté el diseño de pruebas destructivas (Negative Testing):** Incorporé tests específicos para atacar las ramas de "No Encontrado" (`update_reading_not_found`, `delete_sensor_not_found`) y validaciones físicas extremas (bypasses, unidades inválidas). Verificamos que la capa de negocio propaga limpiamente las excepciones hacia la capa web (`FastAPI`) sin exponer las entrañas de la lógica.
-* **Auditoría final de métricas de calidad:** Al finalizar la refactorización y gracias al desacoplamiento de la infraestructura real, ejecuté la suite completa (80 tests atómicos). Validé el éxito superando la meta exigida del 95%, cerrando el ciclo con una cobertura total verificada del 96.93%.
-* **Rechacé y corregí los nombres de variables propuestos:** Identifiqué que la IA intentaba auditar llamadas a métodos con parámetros inexistentes en mi esquema de Pydantic. Corregí manualmente los tests en `tests/test_alert_repo.py` para usar exactamente `description`. Razón de ingeniería: Los tests unitarios deben validar rigurosamente el contrato de la interfaz definido, no un pseudocódigo genérico generado por la IA.
-* **Acepté y validé el uso de MagicMock para OCP:** Aunque tuve que corregir los nombres, validé la estrategia de usar mocks para aislar la base de datos y comprobar que el `DBAlertStrategy` delega el trabajo correctamente al repositorio. Esto me permitió alcanzar el GREEN en los 85 tests y superar oficialmente la meta exigida del 95%.
-
-## Semana 5 · Entrada 4 (Jueves)
-Prompt: "Ayúdame a corregir los fallos de mismatch en los tests de alertas desarrollados ayer, ya que el pipeline de TDD está fallando debido a alucinaciones en los nombres de las variables, y necesitamos alcanzar la meta del 95% de cobertura."
-La IA diagnosticó que los tests propuestos anteriormente estaban utilizando nombres de parámetros incorrectos (como `message` en lugar de `description`) y sugirió los ajustes necesarios para alinear las aserciones de `MagicMock` con la implementación real de mi contrato de ingeniería en `app/repositories/alert_repo.py`. Intervine para depurar la ejecución y asegurar el GREEN definitivo:
-* **Rechacé y corregí los nombres de variables propuestos:** Identifiqué que la IA intentaba auditar llamadas a métodos con parámetros inexistentes en mi esquema de Pydantic. Corregí manualmente los tests en `tests/test_alert_repo.py` para usar exactamente `description`. Razón de ingeniería: Los tests unitarios deben validar rigurosamente el contrato de la interfaz definido, no un pseudocódigo genérico generado por la IA.
-* **Acepté y validé el uso de MagicMock para OCP:** Aunque tuve que corregir los nombres, validé la estrategia de usar mocks para aislar la base de datos y comprobar que el `DBAlertStrategy` delega el trabajo correctamente al repositorio. Esto me permitió alcanzar el GREEN en los 85 tests y superar oficialmente la meta exigida del 95%.
-
-## Semana 5 · Entrada 5 (Viernes)
-Prompt: "Audita mi bitácora AI_LOG.md para confirmar que cumplo los entregables de Alto Potencial para el viernes e indícame cómo proceder para el duelo del sábado, y reestructura el README.md para tener un look más profesional"
-La IA auditó la bitácora completa y la comparó contra la rúbrica de la Semana 5. Confirmó que la feature de anomalías (detección, patrón Strategy intercambiable para notificaciones, TDD estricto y alta cobertura) estaba completa y correctamente documentada. Acepté la transición de la fase de codificación a la de despliegue y peer review:
-* **Validé el cumplimiento de la Feature Integradora:** Confirmé que mis commits y la cobertura verificada del 96.85% respaldan la implementación del "paquete" de alertas exigido para el viernes.
-* **Acepté la estrategia de cierre de proyecto:** Dejé de perseguir el 100% de cobertura (métrica de vanidad) y decidí enfocar el timeboxing restante en los entregables de alto potencial no-técnicos: el README.md definitivo con badges de calidad y la preparación del `AI_LOG.md` para el duelo de Peer Review humano vs. IA del sábado.
-* **Sobreescribí el `README.md`:** Tras revisar y ajustar el archivo MarkDown entregado, reemplazé el `README.md` con una versión más limpia, profesional, y directa.
