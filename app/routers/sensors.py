@@ -13,7 +13,7 @@ from app.services.errors_service import (
 )
 from app.services.sensor_service import SensorService
 
-router = APIRouter(prefix="/sensors", tags=["Sensors"])
+router = APIRouter(prefix="/sensors", tags=["Sensores"])
 
 get_db_dependency = Depends(get_db)
 

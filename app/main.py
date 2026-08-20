@@ -1,8 +1,10 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
+from sqlalchemy import text
+from sqlalchemy.exc import SQLAlchemyError
 
 from app.db import Base, ensure_sqlite_schema, engine
-from app.routers import readings, sensors
+from app.routers import alerts, readings, sensors
 from app.services.errors_service import (
     InvalidUnitError,
     OutOfRangeError,
@@ -23,10 +25,17 @@ app = FastAPI(
 """Inclusión de Routers"""
 app.include_router(sensors.router)
 app.include_router(readings.router)
+app.include_router(alerts.router)
 
 @app.get("/health", tags=["System"])
 def health() -> dict[str, str]:
-    return {"status": "ok", "service": "SensorHub"}
+    try:
+        with engine.connect() as connection:
+            connection.execute(text("SELECT 1"))
+    except SQLAlchemyError:
+        return {"status": "degraded", "service": "SensorHub", "database": "error"}
+
+    return {"status": "ok", "service": "SensorHub", "database": "ok"}
 
 @app.exception_handler(SensorNotFoundError)
 @app.exception_handler(ReadingNotFoundError)
