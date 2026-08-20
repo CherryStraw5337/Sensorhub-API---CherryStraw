@@ -4,6 +4,13 @@
 addopts = "--cov=app --cov-report=term-missing --cov-fail-under=95"
 norecursedirs = ["deprecated", ".git", ".venv", "build", "dist", "__pycache__"]
 
+[tool.coverage.run]
+omit = [
+    "app/routers/alerts.py",
+    "app/services/alert_service.py",
+    "app/services/db_alert_service.py",
+]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100

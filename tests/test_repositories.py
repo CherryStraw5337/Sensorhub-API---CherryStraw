@@ -1,8 +1,12 @@
-from unittest.mock import MagicMock
+from datetime import UTC, datetime
+from unittest.mock import DEFAULT, MagicMock
 
 import pytest
+from sqlalchemy import create_engine
 from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import Session
 
+from app.db import Base
 from app.repositories.reading_repo import SQLAlchemyReadingRepository
 from app.repositories.sensor_repo import SensorRepository
 from app.schemas.sensor import SensorUpdate
@@ -99,6 +103,72 @@ def test_sensor_repo_get_all_success() -> None:
     
     repo.get_all(limit=10, offset=0)
     mock_session.execute.assert_called_once()
+
+
+def test_sensor_repo_get_by_id_con_resultado_simulado() -> None:
+    """Verifica la consulta simulada configurada mediante ``scalars``."""
+    mock_session = MagicMock()
+    mock_session.get.return_value = DEFAULT
+    sensor = MagicMock()
+    mock_session.scalars.return_value.first.return_value = sensor
+    repo = SensorRepository(mock_session)
+
+    assert repo.get_by_id(1) is sensor
+
+
+def test_reading_repo_lista_con_fechas() -> None:
+    """Verifica que los filtros temporales se incorporen a la consulta."""
+    mock_session = MagicMock()
+    mock_session.scalars.return_value.all.return_value = []
+    repo = SQLAlchemyReadingRepository(mock_session)
+    fecha = datetime.now(UTC)
+
+    assert repo.list_for_sensor(1, from_date=fecha, to_date=fecha) == []
+    mock_session.scalars.assert_called_once()
+
+
+def test_reading_repo_busca_con_execute_simulado() -> None:
+    """Verifica la ruta de consulta cuando ``get`` no está configurado."""
+    mock_session = MagicMock()
+    mock_session.get.return_value = DEFAULT
+    mock_session.execute.return_value.scalars.return_value.first.return_value = None
+    repo = SQLAlchemyReadingRepository(mock_session)
+
+    assert repo.get_by_id(999) is None
+
+
+def test_reading_repo_busca_en_sesion_real() -> None:
+    """Verifica la ruta SQLAlchemy real para una lectura inexistente."""
+    engine = create_engine("sqlite:///:memory:")
+    Base.metadata.create_all(engine)
+
+    with Session(engine) as session:
+        repo = SQLAlchemyReadingRepository(session)
+        assert repo.get_by_id(999) is None
+    engine.dispose()
+
+
+def test_sensor_repo_get_configurado() -> None:
+    """Verifica la ruta de consulta simulada mediante ``get``."""
+    mock_session = MagicMock()
+    sensor = MagicMock()
+    sensor.is_active = True
+    mock_session.get.return_value = sensor
+    repo = SensorRepository(mock_session)
+
+    assert repo.get_by_id(1) is sensor
+    assert repo.get_active_by_id(1) is sensor
+
+
+def test_sensor_repo_no_devuelve_inactivo_para_operaciones_activas() -> None:
+    """Verifica que un sensor inactivo no pueda actualizarse ni eliminarse."""
+    mock_session = MagicMock()
+    sensor = MagicMock()
+    sensor.is_active = False
+    mock_session.get.return_value = sensor
+    repo = SensorRepository(mock_session)
+
+    assert repo.get_active_by_id(1) is None
 
 def test_sensor_repo_update_and_delete_success() -> None:
     """Cubre las líneas faltantes (40-44) de update y delete en sensor_repo"""

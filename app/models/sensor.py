@@ -17,6 +17,7 @@ class SensorModel(Base):
     max_value: Mapped[float]
     threshold: Mapped[float | None] = mapped_column(default=None, nullable=True) # Umbral opcional para alertas
     is_active: Mapped[bool] = mapped_column(default=True, nullable=False) # Umbral opcional para sensor activo
+    location: Mapped[str] = mapped_column(default="Desconocida", nullable=False)
     region: Mapped[str | None] = mapped_column(default=None, nullable=True) # Umbral opcional para region del sensor
     last_error: Mapped[str | None] = mapped_column(default=None, nullable=True) # Umbral para el ultimo error dado
     

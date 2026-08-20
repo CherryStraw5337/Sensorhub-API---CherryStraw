@@ -1,7 +1,8 @@
 # app/routers/readings.py
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.db import get_db
@@ -11,6 +12,7 @@ from app.repositories.sensor_repo import SensorRepository
 from app.schemas.alert import AlertOut
 from app.schemas.reading import ReadingCreate, ReadingOut, ReadingUpdate
 from app.services.db_alert_strategy import DatabaseAlertStrategy
+from app.services.errors_service import OutOfRangeError
 from app.services.reading_service import ReadingService
 
 """Router para manejar las operaciones relacionadas con lecturas y alertas"""
@@ -41,6 +43,32 @@ def get_reading_service(db: Session = get_db_dependency) -> ReadingService:
 get_reading_service_dependency = Depends(get_reading_service)
 
 """Endpoints siguiendo las convenciones REST"""
+
+
+class LecturaLegacy(BaseModel):
+    id: int
+    value: float
+    unit: str | None = None
+
+
+@router.post("/readings/", response_model=ReadingOut, status_code=201)
+def crear_lectura_legacy(
+    payload: LecturaLegacy,
+    service: ReadingService = get_reading_service_dependency,
+) -> ReadingOut:
+    """Mantiene la ruta antigua de ingesta para clientes existentes."""
+    sensor = service._sensor_repo.get_by_id(payload.id)
+    if sensor is None:
+        raise HTTPException(status_code=404, detail="Sensor no encontrado")
+    unidad = payload.unit or sensor.unit
+    try:
+        lectura = service.record_reading(payload.id, payload.value, unidad)
+    except OutOfRangeError as exc:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Valor fuera de los límites físicos: {exc}",
+        ) from exc
+    return ReadingOut.model_validate(lectura, from_attributes=True)
 
 
 @router.get("/sensors/{sensor_id}/readings", response_model=list[ReadingOut])

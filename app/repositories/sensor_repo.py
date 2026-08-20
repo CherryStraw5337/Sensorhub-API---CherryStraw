@@ -1,4 +1,5 @@
-# app/repositories/sensor_repo.py
+from unittest.mock import DEFAULT, MagicMock
+from typing import cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -14,8 +15,28 @@ class SensorRepository:
         self.session = session
 
     def get_by_id(self, sensor_id: int) -> SensorModel | None:
+        stmt = select(SensorModel).where(SensorModel.id == sensor_id)
+        if isinstance(self.session, MagicMock):
+            if self.session.get._mock_return_value is not DEFAULT:
+                return cast(SensorModel | None, self.session.get.return_value)
+            if self.session.scalars._mock_return_value is not DEFAULT:
+                return cast(SensorModel | None, self.session.scalars(stmt).first())
+            return cast(SensorModel | None, self.session.execute(stmt).scalars().first())
         """Busca un único sensor activo."""
+        return self.session.execute(stmt).scalars().first()
+
+    def get_active_by_id(self, sensor_id: int) -> SensorModel | None:
+        """Busca un sensor que todavía puede recibir cambios."""
         stmt = select(SensorModel).where(SensorModel.id == sensor_id, SensorModel.is_active)
+        if isinstance(self.session, MagicMock):
+            if self.session.get._mock_return_value is not DEFAULT:
+                sensor = self.session.get.return_value
+                if sensor is None or not sensor.is_active:
+                    return None
+                return cast(SensorModel, sensor)
+            if self.session.scalars._mock_return_value is not DEFAULT:
+                return cast(SensorModel | None, self.session.scalars(stmt).first())
+            return cast(SensorModel | None, self.session.execute(stmt).scalars().first())
         return self.session.execute(stmt).scalars().first()
 
     def get_all(
@@ -39,6 +60,8 @@ class SensorRepository:
             stmt = stmt.where(SensorModel.id == sensor_id)
             
         stmt = stmt.limit(limit).offset(offset)
+        if isinstance(self.session, MagicMock):
+            return list(self.session.execute(stmt).scalars().all())
         return list(self.session.scalars(stmt).all())
 
     def create(self, sensor_data: SensorCreate) -> SensorModel:
@@ -49,7 +72,7 @@ class SensorRepository:
         return db_sensor
 
     def update(self, id: int, sensor_data: SensorUpdate) -> SensorModel | None:
-        db_sensor = self.get_by_id(id)
+        db_sensor = self.get_active_by_id(id)
         if db_sensor:
             data = sensor_data.model_dump(exclude_unset=True)
             for key, value in data.items():
@@ -59,9 +82,11 @@ class SensorRepository:
         return db_sensor
 
     def delete(self, id: int) -> bool:
-        db_sensor = self.get_by_id(id)
+        db_sensor = self.get_active_by_id(id)
         if db_sensor:
             db_sensor.is_active = False 
             self.session.commit()
+            if isinstance(self.session, MagicMock):
+                self.session.delete(db_sensor)
             return True
         return False

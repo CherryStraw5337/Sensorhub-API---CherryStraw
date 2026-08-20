@@ -7,17 +7,12 @@ from app.repositories.reading_repo import ReadingRepository
 from app.repositories.sensor_repo import SensorRepository
 from app.schemas.reading import ReadingUpdate
 from app.services.alert_strategy import AlertStrategy
-
-
-# 1. Excepciones Puras de Dominio (Desacopladas de FastAPI)
-class SensorNotFoundError(Exception): 
-    pass
-class ReadingNotFoundError(Exception): 
-    pass
-class InvalidUnitError(Exception): 
-    pass
-class OutOfRangeError(Exception): 
-    pass
+from app.services.errors_service import (
+    InvalidUnitError,
+    OutOfRangeError,
+    ReadingNotFoundError,
+    SensorNotFoundError,
+)
 
 class ReadingService:
     """Servicio agnóstico para manejar la lógica de negocio de lecturas"""
@@ -41,7 +36,7 @@ class ReadingService:
 
     def record_reading(self, sensor_id: int, value: float, unit: str) -> ReadingModel:
         sensor = self._sensor_repo.get_by_id(sensor_id)
-        if not sensor:
+        if not sensor or not sensor.is_active:
             raise SensorNotFoundError("Sensor no encontrado")
 
         self._validate_physics(sensor, value, unit)
@@ -55,7 +50,7 @@ class ReadingService:
         self, sensor_id: int, limit: int, offset: int, start_date: datetime | None = None, end_date: datetime | None = None
     ) -> list[ReadingModel]:
         sensor = self._sensor_repo.get_by_id(sensor_id)
-        if not sensor:
+        if not sensor or not sensor.is_active:
             raise SensorNotFoundError("Sensor no encontrado")
         return self._reading_repo.list_for_sensor(sensor_id, limit, offset, start_date, end_date)
 
@@ -73,7 +68,7 @@ class ReadingService:
         
         # 2. Obtenemos el sensor para sus reglas físicas
         sensor = self._sensor_repo.get_by_id(reading.sensor_id)
-        if not sensor:
+        if not sensor or not sensor.is_active:
             raise SensorNotFoundError("Sensor asociado no encontrado")
 
         # Si el payload trae None (no se actualiza), usamos el valor actual en la BD.

@@ -6,7 +6,6 @@ from pydantic import BaseModel
 
 
 class ReadingBase(BaseModel):
-    id: int
     value: float
     unit: str
 
@@ -19,6 +18,7 @@ class ReadingUpdate(BaseModel):
 
 class ReadingOut(ReadingBase):
     id: int
+    sensor_id: int
     created_at: datetime
     is_anomalous: bool
 
