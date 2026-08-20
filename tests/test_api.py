@@ -1,7 +1,9 @@
 from collections.abc import Generator
+from unittest.mock import patch
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session as SQLAlchemySession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
@@ -196,6 +198,59 @@ def test_health_check() -> None:
         "service": "SensorHub",
         "database": "ok",
     }
+
+
+def test_sensor_reading_stats() -> None:
+    sensor = client.post("/sensors/", json={
+        "name": "Sensor Estadisticas",
+        "type": "TEMPERATURE",
+        "unit": "C",
+        "min_value": 0,
+        "max_value": 100,
+    }).json()
+    sensor_id = sensor["id"]
+    for value in (10, 20, 30):
+        response = client.post(
+            f"/sensors/{sensor_id}/readings",
+            json={"value": value, "unit": "C"},
+        )
+        assert response.status_code == 201
+
+    response = client.get(
+        f"/sensors/{sensor_id}/stats?from=2000-01-01T00:00:00&to=2100-01-01T00:00:00"
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {"minimum": 10, "maximum": 30, "average": 20}
+
+
+def test_metrics_endpoint() -> None:
+    response = client.get("/metrics")
+
+    assert response.status_code == 200
+    assert set(response.json()) == {"active_sensors", "readings_total", "open_alerts"}
+
+
+def test_stats_for_inactive_sensor_returns_not_found() -> None:
+    sensor = client.post("/sensors/", json={
+        "name": "Sensor Inactivo Estadisticas",
+        "type": "TEMPERATURE",
+        "unit": "C",
+        "min_value": 0,
+        "max_value": 100,
+    }).json()
+    client.delete(f"/sensors/{sensor['id']}")
+
+    response = client.get(f"/sensors/{sensor['id']}/stats")
+
+    assert response.status_code == 404
+
+
+def test_health_returns_degraded_when_database_fails() -> None:
+    with patch("app.main.engine.connect", side_effect=SQLAlchemyError("down")):
+        response = client.get("/health")
+
+    assert response.json()["status"] == "degraded"
     
 """
 def test_extra_crud_operations() -> None:
