@@ -3,7 +3,7 @@ from unittest.mock import MagicMock
 from sqlalchemy.orm import Session
 
 from app.repositories.alert_repo import AlertRepository
-from app.services.db_alert_service import DatabaseAlertStrategy
+from app.services.db_alert_strategy import DatabaseAlertStrategy
 
 
 def test_alert_repo_add() -> None:
@@ -12,7 +12,7 @@ def test_alert_repo_add() -> None:
     repo = AlertRepository(mock_session)
     
     # Act
-    repo.add(id=1, reading_value=75.0, threshold=70.0)
+    repo.add(sensor_id=1, reading_value=75.0, threshold=70.0)
     
     # Assert
     mock_session.add.assert_called_once()
@@ -31,7 +31,7 @@ def test_alert_repo_list_for_sensor() -> None:
     repo = AlertRepository(mock_session)
     
     # Act
-    results = repo.list_for_sensor(id=1, limit=10, offset=0)
+    results = repo.list_for_sensor(sensor_id=1, limit=10, offset=0)
     
     # Assert
     mock_session.scalars.assert_called_once()
@@ -44,7 +44,7 @@ def test_database_alert_strategy_send_alert() -> None:
     strategy = DatabaseAlertStrategy(mock_repo)
     
     # Act
-    strategy.trigger_alert(id=1, reading_value=75.0, threshold=70.0)
+    strategy.trigger_alert(sensor_id=1, reading_value=75.0, threshold=70.0)
     
     # Assert (debería llamar al método add del repositorio)
-    mock_repo.add.assert_called_once_with(id=1, reading_value=75.0, threshold=70.0, message="Alerta de anomalía detectada")
+    mock_repo.add.assert_called_once_with(sensor_id=1, reading_value=75.0, threshold=70.0, message="Alerta de anomalía detectada")

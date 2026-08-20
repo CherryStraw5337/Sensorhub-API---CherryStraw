@@ -15,7 +15,7 @@ def test_reading_repo_rollback_on_commit_error() -> None:
     repo = SQLAlchemyReadingRepository(mock_session)
     
     with pytest.raises(SQLAlchemyError):
-        repo.add(id=1, value=25.0, unit="C")
+        repo.add(sensor_id=1, value=25.0, unit="C")
     mock_session.rollback.assert_called_once()
 
 # --- TESTS PARA CASOS "NOT FOUND" EN SENSOR REPO ---
@@ -70,7 +70,7 @@ def test_reading_repo_add_integrity_error() -> None:
     repo = SQLAlchemyReadingRepository(mock_session)
     
     with pytest.raises(SQLAlchemyError):
-        repo.add(id=999, value=10.0, unit="C")
+        repo.add(sensor_id=999, value=10.0, unit="C")
     # Verifica que intentó hacer el rollback
     mock_session.rollback.assert_called_once()
 
@@ -95,39 +95,26 @@ def test_sensor_repo_delete_returns_false_when_not_found() -> None:
 def test_sensor_repo_get_all_success() -> None:
     """Cubre las líneas faltantes (19-22) del get_all en sensor_repo"""
     mock_session = MagicMock()
-    mock_execute_result = MagicMock()
-    
-    # Configuramos el Mock para simular la cadena: session.scalars(stmt).all()
-    mock_session.scalars.return_value = mock_execute_result
-    mock_execute_result.all.return_value = []
-    
     repo = SensorRepository(mock_session)
-    repo.get_all(limit=10, offset=0)
     
-    # Verificamos que se usó scalars en lugar de execute
-    mock_session.scalars.assert_called_once()
-    mock_execute_result.all.assert_called_once()
+    repo.get_all(limit=10, offset=0)
+    mock_session.execute.assert_called_once()
 
 def test_sensor_repo_update_and_delete_success() -> None:
     """Cubre las líneas faltantes (40-44) de update y delete en sensor_repo"""
-    
     mock_session = MagicMock()
     mock_sensor = MagicMock()
     # Hacemos que la BD "encuentre" el sensor
-    mock_session.get.return_value = mock_sensor
+    mock_session.get.return_value = mock_sensor 
     repo = SensorRepository(mock_session)
-
+    
     # 1. Probar que Update hace el commit
     repo.update(1, SensorUpdate(name="Updated Sensor"))
     assert mock_session.commit.called
-
-    # 2. Probar que Delete ejecuta el SOFT DELETE y el commit
-    result = repo.delete(1)
     
-    # YA NO validamos .delete() porque hacemos Soft Delete
-    # Validamos que el sensor fue marcado como inactivo:
-    assert mock_sensor.is_active is False
-    assert mock_session.commit.called
+    # 2. Probar que Delete ejecuta el delete y el commit
+    result = repo.delete(1)
+    mock_session.delete.assert_called_once_with(mock_sensor)
     assert result is True
 
 def test_reading_repo_update_and_delete_success() -> None:
