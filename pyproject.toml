@@ -23,5 +23,5 @@ python_version = "3.12"
 strict = true
 disallow_untyped_defs = true
 ignore_missing_imports = true
-exclude = ["migrations/", "alembic/", "venv/", ".venv/"]
+exclude = ["migrations/", "alembic/", "venv/", ".venv/", "deprecated/"]
 plugins = ["sqlalchemy.ext.mypy.plugin"]
