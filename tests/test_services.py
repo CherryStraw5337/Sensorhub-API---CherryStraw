@@ -427,3 +427,15 @@ def test_record_reading_normal_no_alert() -> None:
     service.record_reading(sensor_id=1, value=75.0, unit="C")
     
     assert len(fake_alert.alerts_triggered) == 0
+
+
+def test_record_reading_out_of_range_triggers_alert_before_rejection() -> None:
+    fake_reading = FakeReadingRepository()
+    fake_sensor = FakeSensorRepository()
+    fake_alert = FakeAlertStrategy()
+    service = ReadingService(fake_reading, fake_sensor, alert_strategy=fake_alert)
+
+    with pytest.raises(OutOfRangeError):
+        service.record_reading(sensor_id=1, value=150.0, unit="C")
+
+    assert fake_alert.alerts_triggered == [(1, 150.0, 75.0)]
