@@ -5,7 +5,7 @@ from typing import Protocol
 from typing import cast
 from unittest.mock import DEFAULT, MagicMock
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
 
@@ -36,7 +36,17 @@ class ReadingRepository(Protocol):
 
     def delete(self, reading_id: int) -> bool: ...
 
-class SQLAlchemyReadingRepository(ReadingRepository):
+
+class ReadingStatsRepository(ReadingRepository, Protocol):
+    def stats_for_sensor(
+        self,
+        sensor_id: int,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> dict[str, float | None]: ...
+
+
+class SQLAlchemyReadingRepository(ReadingStatsRepository):
     def __init__(self, session: Session):
         self._session = session
 
@@ -82,6 +92,25 @@ class SQLAlchemyReadingRepository(ReadingRepository):
         # scalars().all() devuelve Sequence[ReadingModel], lo convertimos a list para mypy
         results: Sequence[ReadingModel] = self._session.scalars(stmt).all()
         return list(results)
+
+    def stats_for_sensor(
+        self,
+        sensor_id: int,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+    ) -> dict[str, float | None]:
+        stmt = select(
+            func.min(ReadingModel.value),
+            func.max(ReadingModel.value),
+            func.avg(ReadingModel.value),
+        ).where(ReadingModel.sensor_id == sensor_id)
+        if start_date:
+            stmt = stmt.where(ReadingModel.created_at >= start_date)
+        if end_date:
+            stmt = stmt.where(ReadingModel.created_at <= end_date)
+
+        minimum, maximum, average = self._session.execute(stmt).one()
+        return {"minimum": minimum, "maximum": maximum, "average": average}
 
     def update(
             self, 
