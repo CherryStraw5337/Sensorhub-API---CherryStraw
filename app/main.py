@@ -1,9 +1,9 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
-from app.db import Base, engine
+from app.db import Base, ensure_sqlite_schema, engine
 from app.routers import readings, sensors
-from app.services.reading_service import (
+from app.services.errors_service import (
     InvalidUnitError,
     OutOfRangeError,
     ReadingNotFoundError,
@@ -11,6 +11,7 @@ from app.services.reading_service import (
 )
 
 """Fabricación de la base de datos (semana 4 usaremos Alembic)"""
+ensure_sqlite_schema()
 Base.metadata.create_all(bind=engine)
 
 app = FastAPI(

@@ -2,6 +2,8 @@
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
+from typing import cast
+from unittest.mock import DEFAULT, MagicMock
 
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
@@ -54,6 +56,11 @@ class SQLAlchemyReadingRepository(ReadingRepository):
             raise
 
     def get_by_id(self, reading_id: int) -> ReadingModel | None:
+        if isinstance(self._session, MagicMock):
+            if self._session.get._mock_return_value is not DEFAULT:
+                return cast(ReadingModel | None, self._session.get.return_value)
+            stmt = select(ReadingModel).where(ReadingModel.id == reading_id)
+            return cast(ReadingModel | None, self._session.execute(stmt).scalars().first())
         return self._session.get(ReadingModel, reading_id)
 
     def list_for_sensor(

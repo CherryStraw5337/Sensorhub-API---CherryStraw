@@ -9,10 +9,13 @@ from app.repositories.sensor_repo import SensorRepository
 from app.schemas.reading import ReadingUpdate
 from app.schemas.sensor import SensorCreate, SensorUpdate
 from app.services.reading_service import (
+    ReadingService,
+)
+from app.services.errors_service import (
+    DatabaseCorruptedError,
     InvalidUnitError,
     OutOfRangeError,
     ReadingNotFoundError,
-    ReadingService,
     SensorNotFoundError,
 )
 from app.services.sensor_service import SensorService
@@ -47,7 +50,12 @@ class FakeReadingRepository:
         from_date: datetime | None = None, 
         to_date: datetime | None = None
     ) -> list[ReadingModel]:
-        return [r for r in self.readings if r.sensor_id == sensor_id]
+        readings = [r for r in self.readings if r.sensor_id == sensor_id]
+        if from_date is not None:
+            readings = [r for r in readings if r.created_at >= from_date]
+        if to_date is not None:
+            readings = [r for r in readings if r.created_at <= to_date]
+        return readings[offset : offset + limit]
 
     def update(
         self, reading_id: int, value: float | None = None, unit: str | None = None
@@ -79,22 +87,37 @@ class FakeSensorRepository(SensorRepository):
                 unit="C", 
                 min_value=-50.0, 
                 max_value=100.0,
-                threshold=75.0
+                threshold=75.0,
+                is_active=True,
+                location="Desconocida",
             )
         ]
+        self._id_counter = 2
 
-    def get_all(self, limit: int = 100, offset: int = 0) -> list[SensorModel]:
-        return self.sensors[offset : offset + limit]
+    def get_all(
+        self,
+        sensor_id: int | None = None,
+        limit: int = 100,
+        offset: int = 0,
+        region: str | None = None,
+        name: str | None = None,
+        last_error: str | None = None
+        ) -> list[SensorModel]:
+        filtered = self.sensors
+        if sensor_id is not None:
+            filtered = [s for s in filtered if s.id == sensor_id]
+        return filtered[offset : offset + limit]
 
     def get_by_id(self, sensor_id: int) -> SensorModel | None:
         return next((s for s in self.sensors if s.id == sensor_id), None)
 
     def create(self, sensor_data: SensorCreate) -> SensorModel:
         sensor = SensorModel(
-            id=len(self.sensors) + 1, 
+            id=self._id_counter,
             **sensor_data.model_dump()
         )
         self.sensors.append(sensor)
+        self._id_counter += 1
         return sensor
 
     def update(self, sensor_id: int, sensor_data: SensorUpdate) -> SensorModel | None:
@@ -279,6 +302,103 @@ def test_sensor_service_delete_not_found() -> None:
     with pytest.raises(HTTPException) as exc_info:
         service.delete_sensor(999)
     assert exc_info.value.status_code == 404
+
+
+def test_sensor_service_get_sensor_not_found() -> None:
+    """Verifica que consultar un sensor inexistente lance el error de dominio."""
+    service = SensorService(FakeSensorRepository())
+    with pytest.raises(SensorNotFoundError):
+        service.get_sensor(999)
+
+
+def test_sensor_service_get_sensors_exitoso() -> None:
+    """Verifica que el servicio transforme sensores a respuestas públicas."""
+    service = SensorService(FakeSensorRepository())
+    sensores = service.get_sensors(limit=10, offset=0)
+
+    assert len(sensores) == 1
+    assert sensores[0].name == "Sensor de Prueba"
+
+
+def test_sensor_service_get_sensors_vacio() -> None:
+    """Verifica que una lista vacía se trate como corrupción de datos."""
+    class RepositorioVacio(FakeSensorRepository):
+        def get_all(
+            self,
+            sensor_id: int | None = None,
+            limit: int = 100,
+            offset: int = 0,
+            region: str | None = None,
+            name: str | None = None,
+            last_error: str | None = None,
+        ) -> list[SensorModel]:
+            return []
+
+    service = SensorService(RepositorioVacio())
+    with pytest.raises(DatabaseCorruptedError):
+        service.get_sensors(limit=10, offset=0)
+
+
+def test_sensor_service_actualiza_y_elimina_sensor() -> None:
+    """Verifica las rutas exitosas de actualización y eliminación lógica."""
+    repositorio = FakeSensorRepository()
+    service = SensorService(repositorio)
+
+    actualizado = service.update_sensor(1, SensorUpdate(name="Sensor actualizado"))
+    assert actualizado.name == "Sensor actualizado"
+
+    service.delete_sensor(1)
+    assert repositorio.sensors == []
+
+
+def test_sensor_service_rechaza_sensor_inactivo() -> None:
+    """Verifica que un sensor inactivo no pueda eliminarse otra vez."""
+    repositorio = FakeSensorRepository()
+    repositorio.sensors[0].is_active = False
+    service = SensorService(repositorio)
+
+    with pytest.raises(HTTPException) as exc_info:
+        service.delete_sensor(1)
+    assert exc_info.value.status_code == 404
+
+
+def test_sensor_service_falla_si_el_repositorio_no_elimina() -> None:
+    """Verifica el error cuando el repositorio no confirma la eliminación."""
+    class RepositorioQueFalla(FakeSensorRepository):
+        def delete(self, sensor_id: int) -> bool:
+            return False
+
+    service = SensorService(RepositorioQueFalla())
+    with pytest.raises(HTTPException) as exc_info:
+        service.delete_sensor(1)
+    assert exc_info.value.status_code == 404
+
+
+def test_lectura_rechaza_sensor_inactivo() -> None:
+    """Verifica que no se consulten lecturas de sensores inactivos."""
+    sensor_repo = FakeSensorRepository()
+    sensor_repo.sensors[0].is_active = False
+    service = ReadingService(FakeReadingRepository(), sensor_repo)
+
+    with pytest.raises(SensorNotFoundError):
+        service.get_readings_by_sensor(1, limit=10, offset=0)
+
+
+def test_actualizacion_falla_si_el_repositorio_no_confirma() -> None:
+    """Verifica el error cuando la actualización no devuelve una lectura."""
+    class RepositorioQueFalla(FakeReadingRepository):
+        def update(
+            self, reading_id: int, value: float | None = None, unit: str | None = None
+        ) -> ReadingModel | None:
+            return None
+
+    lectura_repo = RepositorioQueFalla()
+    sensor_repo = FakeSensorRepository()
+    service = ReadingService(lectura_repo, sensor_repo)
+    lectura = lectura_repo.add(1, 10.0, "C")
+
+    with pytest.raises(ReadingNotFoundError):
+        service.update_reading(lectura.id, ReadingUpdate(value=15.0, unit="C"))
 
 def test_record_reading_triggers_anomaly_alert() -> None:
     """Verifica que si una lectura supera el umbral, se dispara la alerta por la estrategia."""
