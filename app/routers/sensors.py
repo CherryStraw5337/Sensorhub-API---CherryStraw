@@ -8,6 +8,9 @@ from sqlalchemy.orm import Session
 from app.db import get_db
 from app.repositories.sensor_repo import SensorRepository
 from app.schemas.sensor import SensorCreate, SensorOut, SensorUpdate
+from app.services.errors_service import (
+    DatabaseCorruptedError,
+)
 from app.services.sensor_service import SensorService
 
 router = APIRouter(prefix="/sensors", tags=["Sensors"])
@@ -24,7 +27,7 @@ get_sensor_service_dependency = Depends(get_sensor_service)
 def list_sensors(
     limit: int = Query(100, ge=1),
     offset: int = Query(0, ge=0),
-    id: int | None = Query(None,description="Buscar por id específico"),
+    sensor_id: int | None = Query(None,description="Buscar por id específico"),
     region: str | None = Query(None, description="Filtrar por región del sensor"),
     name: str | None = Query(None, description="Filtrar por coincidencia en el nombre"),
     last_error: str | None = Query(None, description="Filtrar por último error registrado"),
@@ -32,7 +35,9 @@ def list_sensors(
 ) -> list[SensorOut]:
     """Lista todos los sensores activos con opciones de búsqueda avanzada."""
     repo = SensorRepository(db)
-    sensors = repo.get_all(id=id, limit=limit, offset=offset, region=region, name=name, last_error=last_error)
+    sensors = repo.get_all(sensor_id=sensor_id, limit=limit, offset=offset, region=region, name=name, last_error=last_error)
+    if not sensors:
+        raise DatabaseCorruptedError("Base de datos corrupta")
     return sensors  # type: ignore
 
 @router.post("/", response_model=SensorOut, status_code=status.HTTP_201_CREATED)
@@ -52,13 +57,11 @@ def update_sensor(
     """Actualiza los datos de un sensor"""
     return service.update_sensor(id=id, region=region, name=name, last_error=last_error, payload=payload)  # type: ignore
 
-@router.delete("/", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{sensor_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_sensor(
-    id: int | None = Query(None,description="Eliminar por id específico"),
-    region: str | None = Query(None, description="Eliminar por región del sensor"),
-    name: str | None = Query(None, description="Eliminar por coincidencia en el nombre"),
-    last_error: str | None = Query(None, description="Eliminar por último error registrado"),
+    sensor_id: int,
     service: SensorService = get_sensor_service_dependency
-    ) -> None:
-    """Elimina un sensor de la database"""
-    service.delete_sensor(id=id, region=region, name=name, last_error=last_error)
+) -> None:
+    """Desactiva de forma segura (Soft Delete) un sensor del inventario."""
+    service.delete_sensor(sensor_id)
+    return None

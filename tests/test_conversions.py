@@ -2,7 +2,7 @@
 
 import pytest
 
-from semana5.conversions import celsius_to_fahrenheit
+from deprecated.semana5.conversions import celsius_to_fahrenheit
 
 
 def test_celsius_to_fahrenheit_freezing_point() -> None:

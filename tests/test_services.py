@@ -47,7 +47,12 @@ class FakeReadingRepository:
         from_date: datetime | None = None, 
         to_date: datetime | None = None
     ) -> list[ReadingModel]:
-        return [r for r in self.readings if r.sensor_id == sensor_id]
+        readings = [r for r in self.readings if r.sensor_id == sensor_id]
+        if from_date is not None:
+            readings = [r for r in readings if r.created_at >= from_date]
+        if to_date is not None:
+            readings = [r for r in readings if r.created_at <= to_date]
+        return readings[offset : offset + limit]
 
     def update(
         self, reading_id: int, value: float | None = None, unit: str | None = None
@@ -82,19 +87,32 @@ class FakeSensorRepository(SensorRepository):
                 threshold=75.0
             )
         ]
+        self._id_counter = 2
 
-    def get_all(self, limit: int = 100, offset: int = 0) -> list[SensorModel]:
-        return self.sensors[offset : offset + limit]
+    def get_all(
+        self,
+        sensor_id: int | None = None,
+        limit: int = 100,
+        offset: int = 0,
+        region: str | None = None,
+        name: str | None = None,
+        last_error: str | None = None
+        ) -> list[SensorModel]:
+        filtered = self.sensors
+        if sensor_id is not None:
+            filtered = [s for s in filtered if s.id == sensor_id]
+        return filtered[offset : offset + limit]
 
     def get_by_id(self, sensor_id: int) -> SensorModel | None:
         return next((s for s in self.sensors if s.id == sensor_id), None)
 
     def create(self, sensor_data: SensorCreate) -> SensorModel:
         sensor = SensorModel(
-            id=len(self.sensors) + 1, 
+            id=self._id_counter,
             **sensor_data.model_dump()
         )
         self.sensors.append(sensor)
+        self._id_counter += 1
         return sensor
 
     def update(self, sensor_id: int, sensor_data: SensorUpdate) -> SensorModel | None:

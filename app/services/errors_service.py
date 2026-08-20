@@ -6,7 +6,7 @@ class ReadingNotFoundError(Exception):
     pass
 class AlertNotFoundError(Exception):
     pass
-class DatabaseCorrupted(Exception):
+class DatabaseCorruptedError(Exception):
     pass
 class InvalidUnitError(Exception): 
     pass

@@ -6,7 +6,7 @@ from app.main import app
 
 client = TestClient(app)
 
-def test_create_reading_physical_validation_fails():
+def test_create_reading_physical_validation_fails() -> None:
     """
     Scenario: Ingesta de telemetría fuera de los límites físicos
     GIVEN: Un sensor de temperatura con límites de -50.0 a 150.0

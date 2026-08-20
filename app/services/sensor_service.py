@@ -5,7 +5,7 @@ from fastapi import HTTPException
 from app.models.sensor import SensorModel
 from app.repositories.sensor_repo import SensorRepository
 from app.schemas.sensor import SensorCreate, SensorUpdate
-from app.services.errors_service import DatabaseCorrupted, SensorNotFoundError
+from app.services.errors_service import DatabaseCorruptedError, SensorNotFoundError
 
 
 class SensorService:
@@ -18,12 +18,12 @@ class SensorService:
         """Obtiene la lista de sensores delegando al repositorio o lanza 404"""
         sensor = self._repo.get_all(limit, offset)
         if not sensor:
-            raise DatabaseCorrupted("Database corrupta. No se pueden mostrar los sensores")
+            raise DatabaseCorruptedError("Database corrupta. No se pueden mostrar los sensores")
         return sensor
 
-    def get_sensor(self, id: int) -> SensorModel:
+    def get_sensor(self, sensor_id: int) -> SensorModel:
         """Busca un sensor y lanza 404 si no existe"""
-        sensor = self._repo.get_by_id(id)
+        sensor = self._repo.get_by_id(sensor_id)
         if not sensor:
             raise SensorNotFoundError("Sensor no encontrado")
         return sensor
