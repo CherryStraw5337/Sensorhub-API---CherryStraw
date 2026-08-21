@@ -49,7 +49,7 @@ jobs:
     - name: Chequeo de Tipos Estáticos (Mypy)
       run: mypy app/
 
-    - name: Migraciones y Pruebas (Smoke Test + Coverage >= 80%)
+    - name: Migraciones y Pruebas (Smoke Test + Coverage >= 95%)
       env:
         # Apuntamos a la base de datos de pruebas que GitHub Actions levantó
         DATABASE_URL: postgresql://sensor_user:supersecretpassword@localhost:5432/sensor_db
