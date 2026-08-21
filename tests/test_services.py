@@ -1,4 +1,5 @@
 from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -439,3 +440,34 @@ def test_record_reading_out_of_range_triggers_alert_before_rejection() -> None:
         service.record_reading(sensor_id=1, value=150.0, unit="C")
 
     assert fake_alert.alerts_triggered == [(1, 150.0, 75.0)]
+
+def test_get_stats_by_sensor_success() -> None:
+    """Cubre la obtención exitosa de estadísticas en la capa de negocio."""
+    mock_reading_repo = MagicMock()
+    mock_sensor_repo = MagicMock()
+    
+    # Simulamos que el sensor existe y está activo
+    mock_sensor = MagicMock()
+    mock_sensor.is_active = True
+    mock_sensor_repo.get_by_id.return_value = mock_sensor
+    
+    # Simulamos la respuesta del repositorio de lecturas
+    mock_reading_repo.stats_for_sensor.return_value = {"minimum": 5.0, "maximum": 10.0, "average": 7.5}
+    
+    service = ReadingService(mock_reading_repo, mock_sensor_repo)
+    result = service.get_stats_by_sensor(sensor_id=1)
+    
+    assert result["minimum"] == 5.0
+    assert result["average"] == 7.5
+    assert mock_reading_repo.stats_for_sensor.called
+
+def test_get_stats_by_sensor_not_found() -> None:
+    """Cubre la excepción cuando se piden estadísticas de un sensor inexistente."""
+    mock_reading_repo = MagicMock()
+    mock_sensor_repo = MagicMock()
+    mock_sensor_repo.get_by_id.return_value = None  # Sensor no existe
+    
+    service = ReadingService(mock_reading_repo, mock_sensor_repo)
+    
+    with pytest.raises(SensorNotFoundError):
+        service.get_stats_by_sensor(sensor_id=999)

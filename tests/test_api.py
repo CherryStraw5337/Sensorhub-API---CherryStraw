@@ -318,3 +318,37 @@ def test_humidity_sensor_lifecycle() -> None:
     })
     assert res_invalid_unit.status_code in [400, 422], "El sistema debió rechazar una unidad incorrecta"
 
+def test_get_metrics() -> None: 
+    """Prueba el endpoint global de métricas del sistema."""
+    response = client.get("/metrics")
+    assert response.status_code == 200
+    
+    data = response.json()
+    assert "active_sensors" in data
+    assert "readings_total" in data
+    assert "open_alerts" in data
+    assert isinstance(data["active_sensors"], int)
+
+def test_get_sensor_stats_api() -> None: 
+    """Prueba el endpoint de estadísticas creando un sensor y lecturas reales."""
+    payload_sensor = {
+        "name": "Stats Sensor",
+        "location": "Lab",
+        "type": "TEMPERATURE",
+        "unit": "C",
+        "min_value": -10.0,
+        "max_value": 50.0
+    }
+    res_sensor = client.post("/sensors/", json=payload_sensor)
+    sensor_id = res_sensor.json()["id"]
+    
+    client.post(f"/sensors/{sensor_id}/readings", json={"value": 10.0, "unit": "C"})
+    client.post(f"/sensors/{sensor_id}/readings", json={"value": 20.0, "unit": "C"})
+    
+    res_stats = client.get(f"/sensors/{sensor_id}/stats")
+    assert res_stats.status_code == 200
+    
+    data = res_stats.json()
+    assert data["minimum"] == 10.0
+    assert data["maximum"] == 20.0
+    assert data["average"] == 15.0

@@ -1,0 +1,34 @@
+name: Production Uptime Monitor
+
+on:
+  schedule:
+    # Se ejecuta cada hora en el minuto 0
+    - cron: '0 * * * *'
+  workflow_dispatch: # Permite correrlo manualmente desde GitHub
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping al endpoint de Health
+        id: ping
+        run: |
+          HTTP_STATUS=$(curl -o /dev/null -s -w "%{http_code}\n" https://sensorhub-api.onrender.com/health)
+          echo "Status de respuesta HTTP: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -ne 200 ]; then
+            echo "El sistema no respondió con 200 OK. Posible caída en producción."
+            exit 1
+          fi
+
+      - name: Crear Issue si el sistema cae
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🚨 ALERTA: SensorHub API Caída en Producción',
+              body: 'El workflow automático de Uptime falló al intentar comunicarse con https://sensorhub-api.onrender.com/health. Revisa los logs de Render inmediatamente.',
+              labels: ['bug', 'production-incident']
+            })
