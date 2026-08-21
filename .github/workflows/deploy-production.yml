@@ -1,0 +1,22 @@
+name: Deploy production
+
+on:
+  push:
+    branches:
+      - main
+
+permissions: {}
+
+jobs:
+  deploy:
+    name: Trigger Render deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger production deployment
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          test -n "$RENDER_DEPLOY_HOOK_URL"
+          curl --fail-with-body --silent --show-error \
+            --request POST \
+            "$RENDER_DEPLOY_HOOK_URL"
