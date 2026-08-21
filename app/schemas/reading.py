@@ -24,3 +24,9 @@ class ReadingOut(ReadingBase):
 
     class Config:
         from_attributes = True
+
+
+class ReadingStats(BaseModel):
+    minimum: float | None
+    maximum: float | None
+    average: float | None

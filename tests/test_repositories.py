@@ -203,3 +203,20 @@ def test_reading_repo_update_and_delete_success() -> None:
     result = repo.delete(1)
     mock_session.delete.assert_called_once_with(mock_reading)
     assert result is True
+
+def test_reading_repo_stats_for_sensor() -> None:
+    """Cubre el cálculo de estadísticas (min, max, avg) en base de datos."""
+    mock_session = MagicMock()
+    mock_execute_result = MagicMock()
+    
+    # Simulamos lo que devuelve la base de datos: (mínimo, máximo, promedio)
+    mock_execute_result.one.return_value = (10.5, 45.2, 25.0)
+    mock_session.execute.return_value = mock_execute_result
+
+    repo = SQLAlchemyReadingRepository(mock_session)
+    result = repo.stats_for_sensor(sensor_id=1)
+    
+    assert result["minimum"] == 10.5
+    assert result["maximum"] == 45.2
+    assert result["average"] == 25.0
+    mock_session.execute.assert_called_once()

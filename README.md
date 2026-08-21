@@ -116,3 +116,27 @@ Puedes interactuar con el sistema en vivo a través de los siguientes enlaces:
 
 - **Swagger UI (Documentación Interactiva):** <a href="https://sensorhub-api.onrender.com/docs"><img src="https://img.shields.io/badge/Render-DOCS-00889E?style=flat&logo=render&logoColor=white" alt="Render Docs"></a>
 - **Health Check (Estado del Sistema):**<a href="https://sensorhub-api-odm7.onrender.com/health"><img src="https://img.shields.io/badge/Render-HEALTH-9E1500?style=flat&logo=render&logoColor=white" alt="Render Health"></a>
+
+---
+
+## Decisiones de Diseño (ADRs)
+Para comprender en detalle los fundamentos arquitectónicos y las decisiones de diseño que rigen este proyecto, se documentaron formalmente los siguientes registros de decisión:
+
+### 1. ADR 0001: Arquitectura en Capas para SensorHub
+**Estado: Aceptado**
+* Contexto: En las iteraciones iniciales (Semanas 0 y 1), la lógica física del sensor y el acceso a hardware estaban acoplados. Al migrar a una API REST con FastAPI (Semana 3), vincular los routers directamente con SQLAlchemy limitaba la flexibilidad técnica. Necesitábamos un diseño que permitiera probar la lógica de validación física sin depender de una base de datos real, y migrar de SQLite (local) a PostgreSQL (producción) sin alterar las reglas de negocio.
+* Decisión: Implementar una arquitectura limpia estructurada en 4 capas desacopladas: routers -> services -> repositories -> models. Aplicamos el Principio de Inversión de Dependencias (DIP) entre servicios y repositorios utilizando protocolos estructurales (Protocol).
+* Consecuencias:
+	* Positivas: Testeabilidad extrema (ejecución de pruebas unitarias en memoria RAM con Fake Repositories en milisegundos); desacoplamiento total de infraestructura (migración SQLite/PostgreSQL sin alterar la lógica de negocio); y modularidad regida por el principio de Responsabilidad Única (SRP).
+	* Negativas: Incremento en la verbosidad y ceremonias de código (boilerplate) incluso para operaciones CRUD simples; y mayor curva de aprendizaje para el equipo al requerir estricta disciplina en los límites de cada capa.
+
+### 2. ADR 0002: Uso de PATCH vs PUT para la Actualización Parcial de Sensores
+**Estado: Aceptado**
+* Contexto: Con la adición de operaciones CRUD para la gestión del inventario de sensores en la Semana 6, se evaluó cómo debían actualizarse los recursos. El estándar REST propone PUT para reemplazo completo, lo cual obliga a los dispositivos a realizar un GET previo, modificar el valor en memoria local y enviar el payload completo. En un contexto IoT, obligar a microcontroladores de bajo consumo a transmitir payloads completos es altamente ineficiente y consume ancho de banda y batería críticos de forma innecesaria.
+* Decisión: Adoptar de forma estricta el método PATCH (PATCH `/sensors/{id}`) para actualizaciones del inventario, restringiendo el uso de POST únicamente para creación de recursos.
+* Detalle de Implementación:
+	* Schemas (Pydantic): Creación del esquema SensorUpdate con atributos opcionales (`Optional[...]`).
+	* Repositories: Uso de `.model_dump(exclude_unset=True)` de Pydantic para indicarle a SQLAlchemy que reconstruya dinámicamente la consulta UPDATE únicamente para las columnas enviadas explícitamente por el cliente.
+* Consecuencias:
+	* Positivas: Semántica RESTful impecable; eficiencia crítica de red y batería al transmitir solo el fragmento modificado; y mayor seguridad de datos al mitigar la sobrescritura accidental de atributos sensibles (como `is_active` o límites físicos de hardware).
+	* Negativas: Duplicación de esquemas (Pydantic SensorCreate con campos obligatorios vs SensorUpdate con opcionales) que requieren sincronización ante cambios de dominio; y mayor complejidad en el repositorio para mapear campos dinámicamente usando `setattr()` en el ORM.

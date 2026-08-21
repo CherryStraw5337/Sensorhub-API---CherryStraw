@@ -3,22 +3,22 @@
 from typing import Annotated
 
 import fastapi
-from fastapi import Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.repositories.alert_repo import AlertRepository
-from app.schemas.alert import AlertOut
+from app.schemas.alert import AlertOut, AlertUpdate
 from app.schemas.sensor import SensorOut
 
-router = fastapi.APIRouter(tags=["Alertas"])
+router = APIRouter(prefix="/alerts", tags=["Alerts"])
 DbSession = Annotated[Session, Depends(get_db)]
 
-@router.get("/alerts/", response_model=list[AlertOut])
+@router.get("/", response_model=list[AlertOut])
 def get_alerts_library(
     limit: int = fastapi.Query(50, ge=1),
     offset: int = fastapi.Query(0, ge=0),
-    is_resolved: bool | None = fastapi.Query(None, description="Filtrar por estado de resolución de la alarma"),
+    is_resolved: bool | None = fastapi.Query(False, description="Filtrar por estado de resolución de la alarma"),
     *,
     db: DbSession
 ) -> list[AlertOut]:
@@ -26,7 +26,22 @@ def get_alerts_library(
     repo = AlertRepository(db)
     return repo.get_all_alerts(limit=limit, offset=offset, is_resolved=is_resolved) # type: ignore
 
-@router.get("/alerts/sensors-by-alarm", response_model=list[SensorOut])
+@router.patch("/{alert_id}", response_model=AlertOut)
+def update_alert_status(
+    alert_id: int,
+    alert_update: AlertUpdate,
+    db: DbSession
+) -> AlertOut:
+    """Actualiza el estado de una alerta (Máquina de estados)."""
+    repo = AlertRepository(db)
+    updated_alert = repo.update_status(alert_id, alert_update.status)
+
+    if not updated_alert:
+         raise HTTPException(status_code=404, detail="Alert not found")
+
+    return AlertOut.model_validate(updated_alert, from_attributes=True)
+
+@router.get("/sensors-by-alarm", response_model=list[SensorOut])
 def get_sensors_by_recent_alarm(
     alarm_type: str = fastapi.Query(..., description="Tipo de alarma (ej: threshold_breached)"),
     hours: int = fastapi.Query(24, ge=1, description="Ventana de tiempo en horas hacia atrás"),

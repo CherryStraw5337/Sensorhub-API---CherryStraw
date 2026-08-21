@@ -7,9 +7,9 @@ Los logs de IA junto al python script (`logger.py`) fueron creados a base de rec
 
 # Semana 6 - Proyecto Final: SensorHub & Estabilización de API (Consolidado)
 
-##### Prompts dados: 84
+##### Prompts dados: 87
 
-##### Chats creados: 26
+##### Chats creados: 27
 
 ---
 
@@ -708,6 +708,59 @@ Consolidación de todos los prompts de esta meta-conversación actual de alineac
 
 * **Acepté la auto-referencia documental:** Registré la sesión completa de depuración como evidencia del control absoluto del programador humano sobre las herramientas de IA, cerrando el log de la Semana 6 en su versión definitiva y pulida.
 * **Sellé la calidad final del portafolio:** Concluí con verde absoluto en el analizador de tipos y tests unitarios, con una cobertura final impecable del **96.85% de código**.
+
+---
+
+# VSCode: Copilot Chat
+
+## Prompt (RF-5 - Gestión de alertas)
+
+> Implementa la consulta de alertas activas y la máquina de estados `open`, `acknowledged` y `resolved`, incluyendo el cambio de estado mediante API.
+
+### Respuesta
+
+> El flujo de alertas debe ser observable y transicionable: una anomalía crea una alerta abierta, el operador puede reconocerla y finalmente resolverla. Primero corregiremos los contratos entre estrategia, repositorio, modelo y router; después validaremos el ciclo completo mediante HTTP.
+
+### Resultado / Aprendizaje
+
+* **Acepté la persistencia explícita del threshold:** Alineé `AlertRepository.add`, `DatabaseAlertStrategy` y `AlertModel` para que el umbral forme parte del registro persistido.
+* **Corregí las rutas duplicadas del router:** El prefijo `/alerts` no debe repetirse en cada decorador. Así, `GET /alerts/` y `PATCH /alerts/{alert_id}` quedan expuestos con las rutas esperadas.
+* **Acepté alertar antes de rechazar la lectura:** Una lectura fuera de rango continúa devolviendo error, pero primero genera una alerta abierta para no perder el evento operativo.
+* **Corregí la compatibilidad del endpoint legacy:** La ingesta `/readings/` acepta tanto `id` como `sensor_id`, manteniendo compatibilidad con clientes antiguos y actuales.
+
+---
+
+## Prompt (RF-6 - Estadísticas por sensor y periodo)
+
+> Añade estadísticas de mínimo, máximo y promedio por sensor, filtrables por un periodo de fechas, respetando la arquitectura de repositorio y servicio.
+
+### Respuesta
+
+> Las agregaciones deben ejecutarse en SQL, no después de cargar todas las lecturas en memoria. Separaremos la capacidad estadística del protocolo general para no obligar a los repositorios falsos existentes a implementar métodos que no necesitan.
+
+### Resultado / Aprendizaje
+
+* **Acepté `GET /sensors/{sensor_id}/stats`:** Implementé los filtros opcionales `from` y `to` y las agregaciones SQL de mínimo, máximo y promedio.
+* **Corregí el contrato de tipado:** Separé `ReadingStatsRepository` de `ReadingRepository`, evitando romper las implementaciones de prueba que solo necesitan CRUD de lecturas.
+* **Acepté probar el caso de sensor inactivo:** El servicio rechaza estadísticas de sensores desactivados de la misma forma que rechaza operaciones activas sobre ellos.
+
+---
+
+## Prompt (RF-7 - Salud, métricas y estabilización)
+
+> Completa `/health` con una comprobación de base de datos, añade métricas básicas y deja la suite con tipado y cobertura de calidad.
+
+### Respuesta
+
+> `/health` debe diferenciar una API disponible de una API cuya base de datos está degradada. `/metrics` expondrá contadores sencillos de sensores activos, lecturas totales y alertas abiertas. Finalmente, ejecutaremos pytest, Ruff y mypy para comprobar el resultado completo.
+
+### Resultado / Aprendizaje
+
+* **Acepté `/metrics` como endpoint operativo:** Añadí los contadores `active_sensors`, `readings_total` y `open_alerts`, mientras `/health` conserva los estados `ok` y `degraded`.
+* **Corregí la deriva del esquema SQLite:** `create_all` no modifica tablas existentes, por lo que `ensure_sqlite_schema` añade de forma idempotente `alerts.status`, `readings.is_anomalous` y mantiene la compatibilidad con `alerts.threshold`.
+* **Rechacé depender del orden global de los tests:** Aislé el test de alertas con SQLite en memoria y restauré los overrides de FastAPI después de ejecutarlo.
+* **Acepté ampliar la cobertura con pruebas de comportamiento:** Cubrí estadísticas, métricas, health degradado, sensores inactivos y alertas por lecturas fuera de rango.
+* **Resultado final:** **74 tests pasados**, **95.09% de cobertura**, Ruff sin errores y mypy sin errores en `app` y `tests`.
 
 ---
 
@@ -3279,4 +3332,3 @@ ignore_missing_imports = true
 * **Acepté y completé el autodiagnóstico y presentación en la comunidad:** Compartí mis expectativas del programa y mi trasfondo en electrónica, cerrando con un **100% de cumplimiento** el checklist de inicio del Sprint 0.
 
 ---
-
