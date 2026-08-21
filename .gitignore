@@ -222,6 +222,8 @@ __marimo__/
 
 #DS
 .DS_Store
+
+#Aider
 .aider*
 
 #Bash cmds
@@ -229,3 +231,6 @@ __marimo__/
 
 #Deprecated files
 deprecated/
+
+#Local hub
+sensorhub.db

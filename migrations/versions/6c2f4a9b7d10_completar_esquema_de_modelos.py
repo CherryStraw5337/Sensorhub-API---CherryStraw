@@ -74,6 +74,11 @@ def upgrade() -> None:
             sa.ForeignKeyConstraint(["sensor_id"], ["sensors.id"]),
             sa.PrimaryKeyConstraint("id"),
         )
+    elif "status" not in _column_names(bind, "alerts"):
+        op.add_column(
+            "alerts",
+            sa.Column("status", sa.String(), server_default="open", nullable=False),
+        )
 
 
 def downgrade() -> None:
