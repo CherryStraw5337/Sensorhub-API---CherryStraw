@@ -18,12 +18,31 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 
+def _column_names(bind: sa.Connection, table_name: str) -> set[str]:
+    if bind.dialect.name == "postgresql":
+        rows = bind.execute(
+            sa.text(
+                """
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_schema = current_schema()
+                  AND table_name = :table_name
+                """
+            ),
+            {"table_name": table_name},
+        )
+        return {row[0] for row in rows}
+
+    rows = bind.exec_driver_sql(f'PRAGMA table_info("{table_name}")')
+    return {row[1] for row in rows}
+
+
 def upgrade() -> None:
     bind = op.get_bind()
     inspector = sa.inspect(bind)
 
     existing_tables = set(inspector.get_table_names())
-    sensor_columns = {column["name"] for column in inspector.get_columns("sensors")}
+    sensor_columns = _column_names(bind, "sensors")
     sensor_updates = {
         "threshold": sa.Column("threshold", sa.Float(), nullable=True),
         "is_active": sa.Column("is_active", sa.Boolean(), server_default=sa.true(), nullable=False),
@@ -35,7 +54,7 @@ def upgrade() -> None:
         if name not in sensor_columns:
             op.add_column("sensors", column)
 
-    reading_columns = {column["name"] for column in inspector.get_columns("readings")}
+    reading_columns = _column_names(bind, "readings")
     if "is_anomalous" not in reading_columns:
         op.add_column(
             "readings",
