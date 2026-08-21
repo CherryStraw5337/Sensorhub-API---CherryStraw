@@ -39,6 +39,7 @@ COPY --from=builder /opt/venv /opt/venv
 
 # Copiamos nuestro código de la API y las migraciones
 COPY ./app ./app
+COPY ./migrations ./migrations
 COPY alembic.ini .
 
 # Dar propiedad de los archivos al usuario sin privilegios
@@ -51,4 +52,4 @@ USER appuser
 EXPOSE 8000
 
 # Comando de arranque (nuestro "main" loop)
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "alembic upgrade head && exec uvicorn app.main:app --host 0.0.0.0 --port 8000"]
