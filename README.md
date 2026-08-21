@@ -17,7 +17,9 @@
 <br>
 [![DOCS](https://img.shields.io/badge/Render-DOCS-00889E?style=flat&logo=render&logoColor=white)](https://sensorhub-api.onrender.com/docs)
 [![HEALTH](https://img.shields.io/badge/Render-HEALTH-9E1500?style=flat&logo=render&logoColor=white)](https://sensorhub-api-odm7.onrender.com/health)
-
+<br>
+[![Demo](https://img.shields.io/badge/https%3A%2F%2Fwww.youtube.com%2F%40CherryStraw-n3n?label=Demo%20video&labelColor=grey&color=red
+)](https://www.youtube.com/watch?v=rfcVDUtJq7o)
 </div>
 <br>
 
