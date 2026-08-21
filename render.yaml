@@ -1,13 +1,13 @@
 # render.yaml (infraestructura como codigo)
 services:
   - type: web
-    name: sensorhub-api
+    name: Sensorhub API
     runtime: docker
     plan: free
     healthCheckPath: /health
     envVars:
       - key: DATABASE_URL
-        fromDatabase: { name: sensorhub-db, property: connectionString }
+        fromDatabase: { name: Sensorhub Database, property: connectionString }
 databases:
-  - name: sensorhub-db
+  - name: Sensorhub Database
     plan: free

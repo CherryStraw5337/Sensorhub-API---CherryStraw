@@ -12,11 +12,13 @@ jobs:
     name: Trigger Render deploy
     runs-on: ubuntu-latest
     steps:
-      - name: Trigger production deployment
+      - name: Trigger Render Deploy
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          test -n "$RENDER_DEPLOY_HOOK_URL"
-          curl --fail-with-body --silent --show-error \
-            --request POST \
-            "$RENDER_DEPLOY_HOOK_URL"
+          if [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "Desencadenando despliegue en Render..."
+            curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
+          else
+            echo "RENDER_DEPLOY_HOOK_URL no esta configurado en los secretos de GitHub. Saltando este paso de forma segura."
+          fi
