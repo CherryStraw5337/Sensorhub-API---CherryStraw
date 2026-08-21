@@ -52,6 +52,45 @@ class LecturaLegacy(BaseModel):
     value: float
     unit: str | None = None
 
+@router.get("/sensors/{sensor_id}/readings", response_model=list[ReadingOut])
+def list_sensor_readings(
+    sensor_id: int,
+    limit: int = Query(50, ge=1),
+    offset: int = Query(0, ge=0),
+    from_date: datetime | None = get_from,
+    to_date: datetime | None = get_to,
+    service: ReadingService = get_reading_service_dependency,
+) -> list[ReadingOut]:
+    """Lista lecturas de un sensor con paginación y filtros de fecha"""
+    return service.get_readings_by_sensor(sensor_id, limit, offset, from_date, to_date)  # type: ignore
+
+
+@router.get("/sensors/{sensor_id}/stats", response_model=ReadingStats)
+def sensor_reading_stats(
+    sensor_id: int,
+    from_date: datetime | None = get_from,
+    to_date: datetime | None = get_to,
+    service: ReadingService = get_reading_service_dependency,
+) -> ReadingStats:
+    """Calcula mínimo, máximo y promedio en un periodo opcional."""
+    return service.get_stats_by_sensor(sensor_id, from_date, to_date)  # type: ignore
+
+@router.get("/readings/{reading_id}", response_model=ReadingOut)
+def get_reading(
+    reading_id: int,
+    service: ReadingService = get_reading_service_dependency,
+) -> ReadingOut:
+    """Obtiene una lectura específica por su ID único"""
+    return service.get_reading(reading_id)  # type: ignore
+
+@router.post("/sensors/{sensor_id}/readings", response_model=ReadingOut, status_code=201)
+def create_reading(
+    sensor_id: int,
+    payload: ReadingCreate,
+    service: ReadingService = get_reading_service_dependency,
+) -> ReadingOut:
+    """Crea una nueva lectura validando límites físicos y generando alerta si hay anomalía"""
+    return service.record_reading(sensor_id, payload.value, payload.unit)  # type: ignore
 
 @router.post("/readings/", response_model=ReadingOut, status_code=201)
 def crear_lectura_legacy(
@@ -95,50 +134,6 @@ def crear_lectura_legacy(
             detail=f"Valor fuera de los límites físicos: {exc}",
         ) from exc
     return ReadingOut.model_validate(lectura, from_attributes=True)
-
-
-@router.get("/sensors/{sensor_id}/readings", response_model=list[ReadingOut])
-def list_sensor_readings(
-    sensor_id: int,
-    limit: int = Query(50, ge=1),
-    offset: int = Query(0, ge=0),
-    from_date: datetime | None = get_from,
-    to_date: datetime | None = get_to,
-    service: ReadingService = get_reading_service_dependency,
-) -> list[ReadingOut]:
-    """Lista lecturas de un sensor con paginación y filtros de fecha"""
-    return service.get_readings_by_sensor(sensor_id, limit, offset, from_date, to_date)  # type: ignore
-
-
-@router.get("/sensors/{sensor_id}/stats", response_model=ReadingStats)
-def sensor_reading_stats(
-    sensor_id: int,
-    from_date: datetime | None = get_from,
-    to_date: datetime | None = get_to,
-    service: ReadingService = get_reading_service_dependency,
-) -> ReadingStats:
-    """Calcula mínimo, máximo y promedio en un periodo opcional."""
-    return service.get_stats_by_sensor(sensor_id, from_date, to_date)  # type: ignore
-
-
-@router.post("/sensors/{sensor_id}/readings", response_model=ReadingOut, status_code=201)
-def create_reading(
-    sensor_id: int,
-    payload: ReadingCreate,
-    service: ReadingService = get_reading_service_dependency,
-) -> ReadingOut:
-    """Crea una nueva lectura validando límites físicos y generando alerta si hay anomalía"""
-    return service.record_reading(sensor_id, payload.value, payload.unit)  # type: ignore
-
-
-@router.get("/readings/{reading_id}", response_model=ReadingOut)
-def get_reading(
-    reading_id: int,
-    service: ReadingService = get_reading_service_dependency,
-) -> ReadingOut:
-    """Obtiene una lectura específica por su ID único"""
-    return service.get_reading(reading_id)  # type: ignore
-
 
 @router.patch("/readings/{reading_id}", response_model=ReadingOut)
 def update_reading(

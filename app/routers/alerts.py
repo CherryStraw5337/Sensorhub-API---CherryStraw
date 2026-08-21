@@ -26,21 +26,6 @@ def get_alerts_library(
     repo = AlertRepository(db)
     return repo.get_all_alerts(limit=limit, offset=offset, is_resolved=is_resolved) # type: ignore
 
-@router.patch("/{alert_id}", response_model=AlertOut)
-def update_alert_status(
-    alert_id: int,
-    alert_update: AlertUpdate,
-    db: DbSession
-) -> AlertOut:
-    """Actualiza el estado de una alerta (Máquina de estados)."""
-    repo = AlertRepository(db)
-    updated_alert = repo.update_status(alert_id, alert_update.status)
-
-    if not updated_alert:
-         raise HTTPException(status_code=404, detail="Alert not found")
-
-    return AlertOut.model_validate(updated_alert, from_attributes=True)
-
 @router.get("/sensors-by-alarm", response_model=list[SensorOut])
 def get_sensors_by_recent_alarm(
     alarm_type: str = fastapi.Query(..., description="Tipo de alarma (ej: threshold_breached)"),
@@ -63,3 +48,18 @@ def list_sensor_alerts(
     """Obtiene el historial de alertas de un sensor específico."""
     repo = AlertRepository(db)
     return repo.list_for_sensor(sensor_id, limit=limit, offset=offset)  # type: ignore
+
+@router.patch("/{alert_id}", response_model=AlertOut)
+def update_alert_status(
+    alert_id: int,
+    alert_update: AlertUpdate,
+    db: DbSession
+) -> AlertOut:
+    """Actualiza el estado de una alerta."""
+    repo = AlertRepository(db)
+    updated_alert = repo.update_status(alert_id, alert_update.status)
+
+    if not updated_alert:
+         raise HTTPException(status_code=404, detail="Alert not found")
+
+    return AlertOut.model_validate(updated_alert, from_attributes=True)
