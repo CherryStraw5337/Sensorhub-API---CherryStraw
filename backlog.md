@@ -14,6 +14,8 @@ Este backlog separa las funcionalidades esenciales de las mejoras futuras. Una t
 | US-06 | Historia de usuario | `Could` | Análisis futuro, no bloqueante |
 | US-07 | Historia de usuario | `Must` | Necesaria para operación y despliegue |
 | US-08 | Historia de usuario | `Could` | Integración opcional |
+| US-09 | Historia de usuario | `Should` | Observabilidad y auditoría operativa |
+| US-10 | Historia de usuario | `Could` | Mejora de la experiencia en Render |
 | TC-01 | Tarea técnica | `Could` | Soporte de desarrollo |
 | TC-02 | Tarea técnica | `Should` | Control de calidad previo al despliegue |
 | TC-03 | Tarea técnica | `Could` | Observabilidad futura |
@@ -187,6 +189,64 @@ Este backlog separa las funcionalidades esenciales de las mejoras futuras. Una t
 * **When:** un dispositivo publica un JSON válido en dicho tópico.
 * **Then:** el worker parsea el payload y ejecuta un `POST` HTTP hacia `/readings` de la API.
 * **And:** registra en sus logs internos el éxito de la transferencia.
+
+### US-09: Registro transversal de eventos de la API
+
+**Prioridad:** `Should`
+**Story Points:** `5`
+**Impacto:** mejora la observabilidad y la auditoría sin cambiar las respuestas públicas de la API.
+
+> Como responsable de operaciones, quiero registrar de forma estructurada los eventos importantes de la API, para reconstruir qué ocurrió cuando se crea un sensor, se obtiene una lectura, se registra telemetría o se corrige una alerta.
+
+#### Scenario: Registro de operaciones exitosas
+
+* **Given:** el logger de la aplicación está configurado en nivel `INFO`.
+* **When:** un cliente crea un sensor, obtiene una lectura, registra una lectura o actualiza una alerta.
+* **Then:** la API genera un evento con operación, recurso, identificador, resultado y marca temporal.
+* **And:** el evento no incluye contraseñas, tokens ni payloads sensibles.
+
+#### Scenario: Registro de errores de dominio
+
+* **Given:** un cliente envía una unidad inválida, consulta un recurso inexistente o intenta una transición de alerta no permitida.
+* **When:** la API maneja la excepción y devuelve el código HTTP correspondiente.
+* **Then:** el logger registra el tipo de error, endpoint, método HTTP, identificador disponible y código de respuesta.
+* **And:** la escritura del log no bloquea ni modifica la respuesta enviada al cliente.
+
+#### Scenario: Consulta de logs en Render
+
+* **Given:** la API está desplegada en Render.
+* **When:** el operador revisa los logs de la aplicación.
+* **Then:** puede filtrar eventos por nivel, operación, recurso y resultado.
+* **And:** los eventos de una misma petición pueden relacionarse mediante un identificador de correlación.
+
+### US-10: Interfaz operativa clara para el despliegue en Render
+
+**Prioridad:** `Could`
+**Story Points:** `5`
+**Impacto:** mejora la comprensión y operación del sistema sin alterar los endpoints REST existentes.
+
+> Como operador de la plataforma, quiero una interfaz web ordenada y visualmente clara para la instancia desplegada en Render, para entender rápidamente el estado de sensores, lecturas, alertas y salud del servicio.
+
+#### Scenario: Vista general del sistema
+
+* **Given:** el operador abre la interfaz de SensorHub en Render.
+* **When:** la aplicación carga el panel principal.
+* **Then:** muestra de forma diferenciada el estado del servicio, sensores activos, lecturas recientes y alertas abiertas.
+* **And:** cada indicador identifica su fuente y momento de actualización.
+
+#### Scenario: Navegación por recursos
+
+* **Given:** el operador está en el panel principal.
+* **When:** selecciona sensores, lecturas o alertas.
+* **Then:** accede a vistas separadas, consistentes y fáciles de escanear.
+* **And:** puede volver al resumen sin perder el contexto de la consulta.
+
+#### Scenario: Estados de carga y error
+
+* **Given:** la API tarda en responder o la base de datos se encuentra degradada.
+* **When:** la interfaz solicita datos al backend.
+* **Then:** muestra estados de carga, vacío y error con mensajes comprensibles.
+* **And:** conserva una jerarquía visual accesible en escritorio y dispositivos móviles.
 
 ## Tareas técnicas
 

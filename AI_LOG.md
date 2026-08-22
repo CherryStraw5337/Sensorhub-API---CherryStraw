@@ -1,15 +1,11 @@
-# AI_LOG - Bitácora de uso de IA
-## IA usada: Gemini Plus 2.5 & Gemini Notebook
-### NOTA:
-Los logs de IA junto al python script (`logger.py`) fueron creados a base de recompilaciones de los chats existentes en la carpeta creada para este curso, por lo que pueden haber inconsistencias en la redacción y contenido. Esto no afecta a la operación de la API ya que los códigos se han documentado por commits extras. En caso de tener dudas, favor de generar un Issue con la plantilla "Pregunta"
+# AI_LOG.md
 
----
+## Semana 6 - Proyecto Final: SensorHub
 
-# Semana 6 - Proyecto Final: SensorHub & Estabilización de API (Consolidado)
 
-##### Prompts dados: 87
+##### Prompts dados: 84
 
-##### Chats creados: 27
+##### Chats creados: 26
 
 ---
 
@@ -711,60 +707,124 @@ Consolidación de todos los prompts de esta meta-conversación actual de alineac
 
 ---
 
-# VSCode: Copilot Chat
+# Copilot.md
 
-## Prompt (RF-5 - Gestión de alertas)
 
-> Implementa la consulta de alertas activas y la máquina de estados `open`, `acknowledged` y `resolved`, incluyendo el cambio de estado mediante API.
+## Registro de conversaciones con GitHub Copilot
 
-### Respuesta
-
-> El flujo de alertas debe ser observable y transicionable: una anomalía crea una alerta abierta, el operador puede reconocerla y finalmente resolverla. Primero corregiremos los contratos entre estrategia, repositorio, modelo y router; después validaremos el ciclo completo mediante HTTP.
-
-### Resultado / Aprendizaje
-
-* **Acepté la persistencia explícita del threshold:** Alineé `AlertRepository.add`, `DatabaseAlertStrategy` y `AlertModel` para que el umbral forme parte del registro persistido.
-* **Corregí las rutas duplicadas del router:** El prefijo `/alerts` no debe repetirse en cada decorador. Así, `GET /alerts/` y `PATCH /alerts/{alert_id}` quedan expuestos con las rutas esperadas.
-* **Acepté alertar antes de rechazar la lectura:** Una lectura fuera de rango continúa devolviendo error, pero primero genera una alerta abierta para no perder el evento operativo.
-* **Corregí la compatibilidad del endpoint legacy:** La ingesta `/readings/` acepta tanto `id` como `sensor_id`, manteniendo compatibilidad con clientes antiguos y actuales.
+Este archivo reúne las conversaciones de Copilot disponibles en esta sesión. Se conserva el orden de trabajo y se resumen las decisiones técnicas y documentales tomadas.
 
 ---
 
-## Prompt (RF-6 - Estadísticas por sensor y periodo)
+## Conversación 1: Organización inicial del README
 
-> Añade estadísticas de mínimo, máximo y promedio por sensor, filtrables por un periodo de fechas, respetando la arquitectura de repositorio y servicio.
+### Solicitudes
 
-### Respuesta
+- Estructurar correctamente el README.
+- Eliminar emojis.
+- Construir la tabla del stack tecnológico.
+- Ajustar los paths de la tabla de contenidos.
+- Mejorar la arquitectura, el flujo de ingesta y la configuración.
+- Corregir cualquier otro problema únicamente en el README.
 
-> Las agregaciones deben ejecutarse en SQL, no después de cargar todas las lecturas en memoria. Separaremos la capacidad estadística del protocolo general para no obligar a los repositorios falsos existentes a implementar métodos que no necesitan.
+### Trabajo realizado
 
-### Resultado / Aprendizaje
+- Se reconstruyó la tabla del stack tecnológico.
+- Se corrigieron enlaces internos y encabezados.
+- Se transformaron los diagramas a bloques Mermaid.
+- Se documentaron los valores reales de configuración, incluyendo SQLite local y PostgreSQL en Docker.
+- Se corrigió el enlace del ADR 0002.
+- Se validó el archivo con `git diff --check`.
 
-* **Acepté `GET /sensors/{sensor_id}/stats`:** Implementé los filtros opcionales `from` y `to` y las agregaciones SQL de mínimo, máximo y promedio.
-* **Corregí el contrato de tipado:** Separé `ReadingStatsRepository` de `ReadingRepository`, evitando romper las implementaciones de prueba que solo necesitan CRUD de lecturas.
-* **Acepté probar el caso de sensor inactivo:** El servicio rechaza estadísticas de sensores desactivados de la misma forma que rechaza operaciones activas sobre ellos.
+## Conversación 2: Estructura del repositorio
+
+### Solicitudes
+
+- Completar la estructura del repositorio en el README.
+- Excluir archivos que no deberían subirse a Git.
+- Agregar comentarios descriptivos a los archivos relacionados con la aplicación.
+- Mantener únicamente el comentario de la carpeta `deprecated/` y retirar los comentarios de sus archivos.
+
+### Trabajo realizado
+
+- Se documentaron workflows, plantillas de issues, paquetes de aplicación, migraciones, pruebas, documentación, MQTT y archivos raíz.
+- Se excluyeron `.venv/`, caches, bytecode, `.DS_Store`, bases de datos locales y reportes generados.
+- Se añadieron comentarios `#` a los archivos del árbol.
+- Se retiraron los comentarios internos de `deprecated/`, conservando la descripción de la carpeta.
+
+## Conversación 3: Diagramas originales de SensorHub
+
+### Solicitudes
+
+- Evitar que el flujo secuencial pareciera copiado de otro repositorio.
+- Hacer la arquitectura más extensa y específica del proyecto.
+
+### Trabajo realizado
+
+- La arquitectura se reorganizó en cuatro planos: entrada HTTP, decisión de dominio, datos y operación.
+- El flujo de ingesta se rediseñó como un pipeline de compuertas de decisión.
+- Se incluyeron validación Pydantic, sensor activo, unidad, rango físico, persistencia, threshold, alertas y respuestas HTTP.
+- Se corrigieron errores Mermaid causados por `database DB` y por llaves en rutas dinámicas.
+
+## Conversación 4: Normalización documental
+
+### Solicitudes
+
+- Añadir la ruta del archivo como primer encabezado en los documentos.
+- Corregir palabras dañadas tras retirar acentos.
+- Organizar `AI_LOG.md`.
+
+### Trabajo realizado
+
+- Se revisaron los documentos Markdown y se recuperaron archivos afectados por una conversión de codificación defectuosa.
+- Se eliminaron caracteres de reemplazo y palabras deformadas de `AI_LOG.md`.
+- Se reorganizó el encabezado de `AI_LOG.md` como `# AI_LOG.md`.
+- Se conservaron caracteres válidos del español donde no causaban corrupción.
+
+## Conversación 5: User stories de observabilidad y UI
+
+### Solicitudes
+
+- Crear una user story para registrar todos los eventos relevantes de la API.
+- Crear otra user story para mejorar la interfaz desplegada en Render.
+
+### Resultado
+
+- Se añadió `US-09: Registro transversal de eventos de la API`, con criterios para operaciones exitosas, errores de dominio, datos sensibles, filtros y correlación.
+- Se añadió `US-10: Interfaz operativa clara para el despliegue en Render`, con criterios para panel general, navegación y estados de carga o error.
+
+## Conversación 6: Sustitución de logger.py por workflow
+
+### Solicitud
+
+- Transformar `logger.py` en un workflow para evitar que quedara como un script aislado.
+
+### Resultado
+
+- Se creó `.github/workflows/update-ai-log.yml`.
+- El workflow reconstruye `AI_LOG.md` a partir de los logs de `docs/ai_logs/`.
+- Puede ejecutarse al cambiar cualquier log semanal o manualmente con `workflow_dispatch`.
+- Hace commit únicamente cuando `AI_LOG.md` cambia.
+- Se eliminó `logger.py` y se actualizaron las referencias del README.
+
+## Conversación 7: Registro actual y entradas previas
+
+### Solicitud
+
+- Agregar esta conversación completa junto con la otra conversación disponible en `Copilot.md`.
+- Conservar entradas previas si existían.
+- Ejecutar el workflow de consolidación.
+
+### Resultado
+
+- `Copilot.md` no contenía entradas previas; este registro incorpora las conversaciones disponibles de la sesión.
+- `Gemini.md` también fue revisado y se encontraba vacío.
+- El workflow se ajustó para procesar todos los archivos Markdown de `docs/ai_logs/`, incluidos `Copilot.md` y `Gemini.md`.
+
 
 ---
 
-## Prompt (RF-7 - Salud, métricas y estabilización)
-
-> Completa `/health` con una comprobación de base de datos, añade métricas básicas y deja la suite con tipado y cobertura de calidad.
-
-### Respuesta
-
-> `/health` debe diferenciar una API disponible de una API cuya base de datos está degradada. `/metrics` expondrá contadores sencillos de sensores activos, lecturas totales y alertas abiertas. Finalmente, ejecutaremos pytest, Ruff y mypy para comprobar el resultado completo.
-
-### Resultado / Aprendizaje
-
-* **Acepté `/metrics` como endpoint operativo:** Añadí los contadores `active_sensors`, `readings_total` y `open_alerts`, mientras `/health` conserva los estados `ok` y `degraded`.
-* **Corregí la deriva del esquema SQLite:** `create_all` no modifica tablas existentes, por lo que `ensure_sqlite_schema` añade de forma idempotente `alerts.status`, `readings.is_anomalous` y mantiene la compatibilidad con `alerts.threshold`.
-* **Rechacé depender del orden global de los tests:** Aislé el test de alertas con SQLite en memoria y restauré los overrides de FastAPI después de ejecutarlo.
-* **Acepté ampliar la cobertura con pruebas de comportamiento:** Cubrí estadísticas, métricas, health degradado, sensores inactivos y alertas por lecturas fuera de rango.
-* **Resultado final:** **74 tests pasados**, **95.09% de cobertura**, Ruff sin errores y mypy sin errores en `app` y `tests`.
-
----
-
-# Semana 5 - Arquitectura, IA y Calidad Avanzada
+# Semana5.md
 
 **Semana 5 - Arquitectura, IA y Calidad Avanzada**
 
@@ -1312,9 +1372,10 @@ ModuleNotFoundError: No module named \'deprecated\'\"**
   dentro de \`pyproject.toml\`, logrando un paso del build 100% exitoso
   ✅.
 
+
 ---
 
-# Semana 4 - Docker, CI/CD y Despliegue
+# Semana4.md
 
 **Semana 4 - Docker, CI/CD y Despliegue**
 
@@ -1794,9 +1855,11 @@ el Pull Request desde una rama huérfana.**
   unificada que desencadenó el Despliegue Continuo (CD) exitoso en
   Render.com.
 
+
 ---
 
-# **Semana 3 - Arquitectura modular de 4 capas, APIs y Persistencia**
+# Semana3.md
+
 
 ### **Prompts dados: 18**
 
@@ -2166,9 +2229,11 @@ class ReadingService:
 ```
 `````
 
+
 ---
 
-# **Semana 2 - Scrum, TDD y User Stories**
+# Semana2.md
+
 
 ### **Prompts dados: 14**
 
@@ -2793,17 +2858,15 @@ Saneamos los imports y agregamos tipado estricto a las interfaces.
 
 - Commit: **`refactor(alerts): asegurar tipado de firma y formato de salida en alertas (REFACTOR)`**
 
-````
+```
 * **Acepté:** El diseño arquitectónico completo con inyección de dependencias en `AnomalyDetector` [20, 23] y el patrón Strategy mediante `Protocol` en `AlertManager` [20, 24]. Esto nos permitió alcanzar un **99% de cobertura total** de la suite de pruebas [25].
 * **Rechacé y Corregí:** El primer error de entorno al correr pytest (`ModuleNotFoundError: No module named 'semana2'`) [26]. Identifiqué que el PYTHONPATH local de macOS no estaba mapeando la carpeta raíz [27]. Lo corregí usando el comando estandarizado `python -m pytest` y añadiendo los archivos de inicialización `__init__.py` necesarios en cada nivel para habilitar la importación jerárquica [27-30].
 * **Corregí:** Un fallo de análisis estático en el Refactor del ciclo 3, donde la IA sugirió un `import pytest` redundante en `test_detector.py` [20, 31]. Al correr `ruff check .` detectamos la importación inútil y la eliminamos para mantener un código limpio antes de sellar el commit [20, 31].
+`````
 
 ---
 
 #### Jueves · Entrada 4 (DoD y Calidad Automatizada)
-`````
-
-### #### Jueves · Entrada 4 (DoD y Calidad Automatizada)
 
 **Prompt:**
 > > **Ayúdame a redactar la Definition of Done estricta, configurar pyproject.toml para automatizar la calidad (cobertura >= 80%, ruff, mypy) y generar los artefactos Scrum finales (Sprint Planning y Retrospective) basados en nuestro historial** [32, 33]
@@ -2936,9 +2999,11 @@ ignore_missing_imports = true
 ````
 `````
 
+
 ---
 
-# Semana 1 - Del firmware al software: reencuadra lo que ya sabes
+# Semana1.md
+
 
 ### Prompts dados: 23
 
@@ -3044,9 +3109,11 @@ ignore_missing_imports = true
 * **Rechacé y corregí el comportamiento de `can_parse()` en `ModbusParser`:** La IA proponía arrojar un error de valor (`raise ValueError`) si la trama de entrada era corta. Identifiqué que esto rompía LSP y OCP al interrumpir toda la tubería de análisis polimórfica en cascada. Lo corregí para retornar limpiamente **`False`**.
 * **Corregí la inyección de tipos nulos con Mypy:** Identifiqué que inyectar **`config=None`** en el test violaba la aserción nominal tipada **`config: UartConfig`**. Modifiqué el test para instanciar un objeto de configuración real, logrando el verde de tipos.
 
+
 ---
 
-# Semana 0 - Preparación para el Curso
+### Semana0.md
+
 
 ##### Prompts dados: 10
 
@@ -3330,5 +3397,3 @@ ignore_missing_imports = true
 ### Resultado / Aprendizaje
 
 * **Acepté y completé el autodiagnóstico y presentación en la comunidad:** Compartí mis expectativas del programa y mi trasfondo en electrónica, cerrando con un **100% de cumplimiento** el checklist de inicio del Sprint 0.
-
----

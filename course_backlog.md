@@ -1,3 +1,5 @@
+# course_backlog.md
+
 # User Stories - Semana 3 a 5
 
 ## US-01: Verificar y registrar conexión de sensor nuevo

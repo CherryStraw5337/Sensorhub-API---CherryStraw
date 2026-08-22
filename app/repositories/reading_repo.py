@@ -1,4 +1,5 @@
 # app/repositories/reading_repo.py
+
 from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
