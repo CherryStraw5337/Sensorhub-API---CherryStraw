@@ -1,10 +1,12 @@
 # app/schemas/alert.py
 
-from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Literal
 
+from pydantic import BaseModel, ConfigDict, Field
+
 AlertStatus = Literal["open", "acknowledged", "resolved"]
+
 
 class AlertBase(BaseModel):
     sensor_id: int
@@ -12,13 +14,13 @@ class AlertBase(BaseModel):
     threshold: float
     message: str
 
+
 class AlertOut(AlertBase):
     id: int
     timestamp: datetime
     status: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 class AlertUpdate(BaseModel):
     status: AlertStatus = Field(..., description="Nuevo estado de la alerta: 'open', 'acknowledged', 'resolved'")

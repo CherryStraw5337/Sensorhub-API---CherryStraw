@@ -1,9 +1,12 @@
 # app/models/alert.py
 
-from sqlalchemy import Column, Integer, String, Float, ForeignKey, DateTime
+from datetime import UTC, datetime
+
+from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String
 from sqlalchemy.orm import relationship
-from datetime import datetime
+
 from app.db import Base
+
 
 class AlertModel(Base):
     __tablename__ = "alerts"
@@ -13,7 +16,7 @@ class AlertModel(Base):
     reading_value = Column(Float, nullable=False)
     threshold = Column(Float, nullable=False)
     message = Column(String, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     status = Column(String, default="open", nullable=False)
 
     sensor = relationship("SensorModel")
