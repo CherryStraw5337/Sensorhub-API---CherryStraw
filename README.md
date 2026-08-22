@@ -649,6 +649,19 @@ pytest --cov=app    # 3. Pruebas y cobertura de código
 
 ```
 
+### Despliegue de una versión en Render
+
+El despliegue de producción se ejecuta únicamente al publicar un tag con formato semántico `vX.Y.Z`, después de integrar los cambios en `main` mediante un Pull Request aprobado:
+
+```bash
+git checkout main
+git pull origin main
+git tag v1.2.3
+git push origin v1.2.3
+```
+
+El workflow `deploy-production.yml` valida el formato del tag, comprueba que el commit pertenece a `main` y activa Render mediante `RENDER_DEPLOY_HOOK_URL`. Este secreto debe estar configurado en GitHub Actions.
+
 ----------
 
 ## Observabilidad y Robustez
