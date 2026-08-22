@@ -1,4 +1,4 @@
-# app/services/alert_strategy.py
+# app/services/alert_service.py
 
 from typing import Protocol
 

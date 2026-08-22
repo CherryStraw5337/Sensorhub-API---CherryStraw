@@ -1,0 +1,90 @@
+name: Update AI log
+
+on:
+  push:
+    branches: ["main"]
+    paths:
+      - "docs/ai_logs/**"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-ai-log:
+    name: Append new AI entries
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Append new Copilot and Gemini entries
+        shell: bash
+        run: |
+          set -euo pipefail
+          output="AI_LOG.md"
+
+          if [ ! -f "$output" ]; then
+            printf '# AI_LOG.md\n\n## Bitacora consolidada de uso de IA\n' > "$output"
+          fi
+
+          additions_file="AI_LOG.new-entries.tmp"
+          : > "$additions_file"
+
+          for log_file in docs/ai_logs/Copilot.md docs/ai_logs/Gemini.md; do
+            [ -s "$log_file" ] || continue
+            source_name="${log_file#docs/ai_logs/}"
+            block_file="${source_name}.blocks.tmp"
+
+            # Cada entrada nueva debe comenzar con un encabezado de nivel 2.
+            awk '
+              /^## / {
+                if (block != "") print block "\034"
+                block = $0
+                next
+              }
+              block != "" { block = block "\n" $0 }
+              END { if (block != "") print block "\034" }
+            ' "$log_file" > "$block_file"
+
+            while IFS= read -r -d $'\034' block; do
+              [ -n "${block//[[:space:]]/}" ] || continue
+              if ! grep -Fq -- "$block" "$output"; then
+                {
+                  printf '\n---\n\n### Nueva entrada: %s\n\n' "$source_name"
+                  printf '%s\n' "$block"
+                } >> "$additions_file"
+              fi
+            done < "$block_file"
+
+            rm -f "$block_file"
+          done
+
+          if [ -s "$additions_file" ]; then
+            insertion_file="AI_LOG.with-new-entries.tmp"
+            awk -v additions_file="$additions_file" '
+              { print }
+              $0 == "## Logs" {
+                while ((getline line < additions_file) > 0) print line
+                close(additions_file)
+              }
+            ' "$output" > "$insertion_file"
+            mv "$insertion_file" "$output"
+          fi
+
+          rm -f "$additions_file"
+
+      - name: Commit consolidated log when changed
+        shell: bash
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- AI_LOG.md; then
+            echo "AI_LOG.md ya esta actualizado."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add AI_LOG.md
+          git commit -m "docs: actualizar AI_LOG con nueva entrada"
+          git push

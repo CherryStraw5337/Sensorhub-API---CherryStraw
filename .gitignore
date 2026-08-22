@@ -219,9 +219,10 @@ __marimo__/
 
 #db
 .db
+sensorhub.db
 
 #DS
-.DS_Store
+.DS
 
 #Aider
 .aider*
@@ -232,5 +233,6 @@ __marimo__/
 #Deprecated files
 deprecated/
 
-#Local hub
+#Local files
 sensorhub.db
+checks/

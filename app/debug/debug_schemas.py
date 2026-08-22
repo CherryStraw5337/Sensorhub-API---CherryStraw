@@ -1,4 +1,5 @@
 # debug_schema.py
+
 import os
 import sys
 

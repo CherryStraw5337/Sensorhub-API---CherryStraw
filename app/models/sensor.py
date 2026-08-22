@@ -1,4 +1,5 @@
 # app/models/sensor.py
+
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base

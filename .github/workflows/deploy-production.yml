@@ -1,24 +1,50 @@
-name: Deploy production
+name: Deploy production release
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - "v*.*.*"
 
-permissions: {}
+permissions:
+  contents: read
 
 jobs:
   deploy:
-    name: Trigger Render deploy
+    name: Deploy version tag to Render
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout tagged commit
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate release tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "Tag invalido: $RELEASE_TAG. Usa el formato vX.Y.Z."
+            exit 1
+          fi
+
+      - name: Verify commit is merged into main
+        run: |
+          set -euo pipefail
+          git fetch origin main --depth=1
+          if ! git merge-base --is-ancestor "$GITHUB_SHA" "origin/main"; then
+            echo "El commit etiquetado no pertenece a main. No se despliega."
+            exit 1
+          fi
+
       - name: Trigger Render Deploy
         env:
           RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
         run: |
-          if [ -n "$RENDER_DEPLOY_HOOK_URL" ]; then
-            echo "Desencadenando despliegue en Render..."
-            curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"
-          else
-            echo "RENDER_DEPLOY_HOOK_URL no esta configurado en los secretos de GitHub. Saltando este paso de forma segura."
+          set -euo pipefail
+          if [ -z "$RENDER_DEPLOY_HOOK_URL" ]; then
+            echo "RENDER_DEPLOY_HOOK_URL no esta configurado en GitHub."
+            exit 1
           fi
+          echo "Desencadenando despliegue de ${GITHUB_REF_NAME} en Render..."
+          curl --fail-with-body --silent --show-error --request POST "$RENDER_DEPLOY_HOOK_URL"

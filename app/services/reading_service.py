@@ -1,4 +1,5 @@
 # app/services/reading_service.py
+
 from datetime import datetime
 from typing import cast
 
@@ -7,7 +8,7 @@ from app.models.sensor import SensorModel
 from app.repositories.reading_repo import ReadingRepository, ReadingStatsRepository
 from app.repositories.sensor_repo import SensorRepository
 from app.schemas.reading import ReadingUpdate
-from app.services.alert_strategy import AlertStrategy
+from app.services.alert_service import AlertStrategy
 from app.services.errors_service import (
     InvalidUnitError,
     OutOfRangeError,

@@ -1,6 +1,7 @@
 # app/schemas/sensor.py
 
 import pydantic
+from pydantic import ConfigDict
 
 
 class SensorBase(pydantic.BaseModel):
@@ -13,8 +14,10 @@ class SensorBase(pydantic.BaseModel):
     max_value: float
     threshold: float | None = None
 
+
 class SensorCreate(SensorBase):
     pass
+
 
 class SensorUpdate(pydantic.BaseModel):
     name: str | None = None
@@ -28,10 +31,10 @@ class SensorUpdate(pydantic.BaseModel):
     last_error: str | None = None
     is_active: bool | None = None
 
+
 class SensorOut(SensorBase):
     id: int
     last_error: str | None = None
     is_active: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)

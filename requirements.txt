@@ -5,7 +5,7 @@ sqlalchemy
 alembic
 pytest
 pytest-cov
-httpx
+httpx<0.28
 ruff
 mypy
 pre-commit
