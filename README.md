@@ -1,9 +1,13 @@
 
 <div align="center">
+  
+# ESTE SERVICIO SE ENCUENTRA FUERA DE OPERACIÓN.
+<br>
 <img src="docs/logo.jpg" alt="SensorHub Logo" style="width=600px; height=600px">
 
 # SensorHub API
 **De firmware y hardware a una arquitectura de software robusta, escalable y asistida por IA.**
+
 
 [![CI Pipeline](https://github.com/lylaxtraw/sdlc-electronica-lyla_alice/actions/workflows/ci.yml/badge.svg)](https://github.com/lylaxtraw/sdlc-electronica-lyla_alice/actions/workflows/ci.yml)
 [![Security Scan](https://github.com/lylaxtraw/sdlc-electronica-lyla_alice/actions/workflows/security.yml/badge.svg)](https://github.com/lylaxtraw/sdlc-electronica-lyla_alice/actions/workflows/security.yml)
